@@ -1,12 +1,17 @@
 {
   "name": "pev",
   "description": "PEV (Plan-Execute-Validate) agent workflow — orchestrates Architect, Builder, Reviewer, and Auditor subagents for structured code changes with cortex integration",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "ddpoe"
   },
   "repository": "https://github.com/ddpoe/pev-agent-nexus",
   "license": "MIT",
-  "agents": "./agents",
+  "agents": [
+    "./agents/pev-architect.md",
+    "./agents/pev-builder.md",
+    "./agents/pev-reviewer.md",
+    "./agents/pev-auditor.md"
+  ],
   "hooks": "./hooks/hooks.json"
 }

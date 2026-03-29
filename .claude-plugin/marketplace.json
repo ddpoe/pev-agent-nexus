@@ -12,7 +12,7 @@
       "name": "pev",
       "source": "./plugins/pev",
       "description": "PEV (Plan-Execute-Validate) agent workflow with cortex integration",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "author": {
         "name": "ddpoe"
       },
