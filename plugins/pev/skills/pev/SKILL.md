@@ -28,7 +28,7 @@ Proceed? (or suggest a different name)
 
 Capture baseline SHA (`git rev-parse HEAD`).
 
-**Create worktree and set up environment** (see ref: `worktree-commands`): `git worktree add`, poetry env use (reuse main repo venv), `cortex_checkout` to copy cortex DB into worktree.
+**Create worktree and set up environment** (see ref: `worktree-commands`): `git worktree add`, `poetry install --no-root` (install deps without the project itself), `cortex_checkout` to copy cortex DB into worktree.
 
 **Write pev-state.json** (see ref: `state-file`) — include `worktree_path`, `cycle_doc_id`, and `counter_file` for the Architect. All subagent hooks read this file.
 
