@@ -7,6 +7,6 @@
   },
   "repository": "https://github.com/ddpoe/pev-agent-nexus",
   "license": "MIT",
-  "agents": ["./agents"],
+  "agents": "./agents",
   "hooks": "./hooks/hooks.json"
 }
