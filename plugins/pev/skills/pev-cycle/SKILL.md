@@ -1,5 +1,5 @@
 ---
-name: pev
+name: pev-cycle
 description: PEV orchestrator — Plan-Execute-Validate workflow. Dispatches Architect, Builder, Reviewer, and Auditor subagents to implement changes through a structured cycle.
 user-invocable: true
 ---
@@ -8,7 +8,7 @@ user-invocable: true
 
 You coordinate a Plan-Execute-Validate cycle by dispatching subagents and managing phase transitions through a cycle manifest document.
 
-**Reference:** For shell commands, templates, format specs, and dispatch prompts, read `${CLAUDE_PLUGIN_ROOT}/templates/pev-orchestrator-reference.json`. This is a DocJSON file — sections are keyed by `id` in the JSON array.
+**Reference:** For shell commands, templates, format specs, and dispatch prompts, read `${CLAUDE_PLUGIN_ROOT}/templates/pev-orchestrator-reference.md`.
 
 ## Phases
 
@@ -16,7 +16,7 @@ You coordinate a Plan-Execute-Validate cycle by dispatching subagents and managi
 
 **Pre-flight: clean working tree.** Run `git status` before anything else. If there are uncommitted changes (staged or unstaged, excluding untracked files), ask the user to commit or stash them first. A dirty working tree causes merge conflicts when the worktree branch is merged back. Do NOT proceed with uncommitted changes.
 
-Parse the user's `/pev` request. If empty or unclear, ask what they want to build or fix.
+Parse the user's `/pev-cycle` request. If empty or unclear, ask what they want to build or fix.
 
 Generate the cycle ID (see ref: `naming-conventions`). Present to user for confirmation:
 ```
@@ -30,11 +30,11 @@ Capture baseline SHA (`git rev-parse HEAD`).
 
 **Create worktree and set up environment** (see ref: `worktree-commands`): `git worktree add`, `poetry install --no-root` (install deps without the project itself), `cortex_checkout` to copy cortex DB into worktree.
 
-**Derive the cortex project prefix** from the worktree directory name: `basename` of the worktree path (e.g., `pev-2026-03-29-smoke-test`). The cycle doc ID is `{worktree-dirname}::docs.pev-cycles.{cycle-id}`. This is because `cortex_write_doc` in a worktree uses the directory name as the project prefix.
+The cycle doc ID is `cortex::docs.pev-cycles.{cycle-id}`. The `cortex` prefix comes from `cortex.toml` (`project_id = "cortex"`), which is a tracked file present in both the main repo and worktrees.
 
-**Write pev-state.json** (see ref: `state-file`) — include `worktree_path`, `cycle_doc_id` (using the derived prefix above), and `counter_file` for the Architect. All subagent hooks read this file.
+**Write pev-state.json** (see ref: `state-file`) — include `worktree_path`, `cycle_doc_id` (`cortex::docs.pev-cycles.{cycle-id}`), and `counter_file` for the Architect. All subagent hooks read this file.
 
-Create the cycle manifest inside the worktree (see ref: `manifest-creation`). After writing, verify the doc ID matches your derived `cycle_doc_id`.
+Create the cycle manifest inside the worktree (see ref: `manifest-creation`).
 
 ### 2. Plan (Architect)
 

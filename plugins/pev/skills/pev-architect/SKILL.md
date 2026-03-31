@@ -13,8 +13,8 @@ You are the Architect agent in a PEV (Plan-Execute-Validate) cycle. Your job is 
 
 The orchestrator passes two pieces of information in your dispatch prompt:
 
-1. **Cycle manifest doc ID** — provided by the orchestrator (prefix derived from worktree directory name, e.g., `pev-2026-03-21-add-history-filtering::docs.pev-cycles.pev-2026-03-21-add-history-filtering`)
-2. **User request** — the original `/pev` prompt describing what needs to be built or fixed
+1. **Cycle manifest doc ID** — provided by the orchestrator (e.g., `cortex::docs.pev-cycles.pev-2026-03-21-add-history-filtering`)
+2. **User request** — the original `/pev-cycle` prompt describing what needs to be built or fixed
 
 ## Workflow
 
@@ -146,7 +146,7 @@ The `context` field still carries ephemeral state for within-round continuity, b
 
 ### Step 5: Write remaining architect sub-sections
 
-**Write each section as its own `cortex_update_section` call as soon as you have enough context. Don't batch all writes to the end.** If you wrote `scope` and `architect.problem` in Step 3, you have 5 sections remaining:
+**Write each section as its own `cortex_update_section` call as soon as you have enough context. Don't batch all writes to the end.** If you wrote `scope` and `architect.problem` in Step 3, you have 7 sections remaining:
 
 The section IDs to update are:
 
@@ -155,8 +155,10 @@ The section IDs to update are:
 | `architect.user-stories` | 3-5 coarse outcomes that define "done" for this cycle (As a..., I want..., so that...). Each story should include **acceptance criteria** — testable conditions that define what "correct" looks like from the outside, without prescribing implementation. Example: "Acceptance: `BROKEN_LINK` appears in the summary line. Severity is between `CONTENT_STALE` and `STRUCTURAL_DRIFT`. Not promotable." |
 | `architect.solution-sketch` | Fat-marker description of the approach. Module-level, not function-level. Enough to show feasibility and orient the Builder, not enough to dictate implementation. Include an **affected files list** — just file paths that will be touched, no per-function change descriptions. Include **edge cases** the Builder might miss — things like precedence rules, error scenarios, or cross-module interactions that aren't obvious from reading a single file. |
 | `architect.constraints` | Rabbit holes (don't go here), no-gos (explicitly out of scope), trade-offs accepted, test budget guidance (5-10 focused tests per subsystem change). These are the code-oriented requirements — expressed as boundaries, not mechanisms. Example: "Only `documents` and `validates` edges are checked" (boundary) not "use `SELECT ... LEFT JOIN` to find them" (mechanism). |
+| `architect.affected-nodes` | Cortex node IDs and file paths this cycle expects to touch. Used by the Auditor to distinguish expected vs collateral staleness. List module-level node IDs, not per-function. |
 | `architect.tasks` | Ordered list of implementation tasks for the Builder. Each task has: a short name, which cortex node IDs to read/modify, which user story it satisfies, and a one-line implementation hint. Order so foundations come first, integration last. 3-8 tasks typical. Example: `1. **Rename DB column** — modify cortex::cortex.index.db schema and migration. Read: cortex::cortex.index.db::init_db, cortex::cortex.index.db::persist_staleness. Satisfies: US-4.` |
 | `architect.required-artifacts` | Concrete deliverables this cycle must produce — the artifacts that prove the work is done. Not the code itself, but what the Reviewer checks against the Builder's output. Example: "Migration script for new columns, 5-10 tests covering staleness per-dimension, updated CLI help text." |
+| `architect.changelog-draft` | Draft changelog entry summarizing what changed from the user's perspective. 2-3 bullet points. The Auditor may refine this after reviewing the actual implementation. |
 
 Each update targets the cycle manifest doc:
 
