@@ -59,7 +59,7 @@ Your review scope is determined empirically, not from the Architect's prediction
 
 ### Step 4: Review stale nodes
 
-Follow the Auditor Reference Protocol (`${CLAUDE_PLUGIN_ROOT}/templates/auditor-reference-protocol.md`) for the full checklist. The key sections in order:
+Follow the Auditor Reference Protocol (`${CLAUDE_PLUGIN_ROOT}/templates/auditor-reference-protocol.md`) for the full checklist. (`${CLAUDE_PLUGIN_ROOT}` is the plugin's install directory — set by Claude Code automatically.) The key sections in order:
 
 #### 4a. Post-Implementation Updates
 

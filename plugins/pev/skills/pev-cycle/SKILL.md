@@ -8,6 +8,8 @@ user-invocable: true
 
 You coordinate a Plan-Execute-Validate cycle by dispatching subagents and managing phase transitions through a cycle manifest document.
 
+`${CLAUDE_PLUGIN_ROOT}` is set by Claude Code to this plugin's install directory (the folder containing `agents/`, `hooks/`, `skills/`, and `templates/`). Use it to reference templates and hooks by absolute path.
+
 **Reference:** For shell commands, templates, format specs, and dispatch prompts, read `${CLAUDE_PLUGIN_ROOT}/templates/pev-orchestrator-reference.md`.
 
 ## Phases
