@@ -257,7 +257,9 @@ The orchestrator dispatches a fresh Builder incarnation to the **same worktree**
 - **Use Google-style docstrings** for any new functions you write.
 - **Bash conventions for worktree commands:**
   - **git:** Use `git -C {worktree_path}` for all git commands (e.g., `git -C /path/to/worktree diff`). Issue each git command as a **separate Bash tool call** — never chain with `&&` or `;`.
-  - **pytest:** Run from the worktree directory: `cd {worktree_path} && poetry run pytest tests/ -x -q`. The `cd` is **required** so that `poetry run` activates the worktree's venv and Python imports the worktree's code, not the main repo's. Running pytest from the main repo with worktree test paths will import wrong code and produce phantom failures.
+  - **pytest:** Always run from the worktree directory: `cd {worktree_path} && poetry run pytest tests/ -x -q`. The `cd` is **required** so that Python imports the worktree's code, not the main repo's.
+    - **NEVER run pytest from the main repo with worktree test paths** (e.g., `cd /main/repo && poetry run pytest pev-worktrees/.../tests/...`). This imports the main repo's code, not your worktree changes, producing false passes or phantom failures.
+    - **When tests fail, debug in the worktree.** Test failures mean your code is wrong — read the traceback, check your imports, fix the code. Do not switch to running from the main repo as a workaround. Do not try `poetry env info`, `sys.path` checks, or `python -m pytest` as alternatives — these are distractions. The worktree setup is correct; your code has a bug.
   - **Other commands:** Pass absolute worktree paths as arguments where possible (e.g., `poetry run python {worktree_path}/scripts/foo.py`).
 
 ## Budget Management

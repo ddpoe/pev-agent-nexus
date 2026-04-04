@@ -221,7 +221,9 @@ The orchestrator writes this to the manifest and dispatches a fresh incarnation.
 - **Run the tests**: Use `cd {worktree_path} && poetry run pytest {test_file}` to verify tests actually pass. The `cd` is **required** so that `poetry run` activates the worktree's venv and Python imports the worktree's code, not the main repo's. A review that says PASS on a failing test is a review failure.
 - **Bash conventions for worktree commands:**
   - **git:** Use `git -C {worktree_path}` for all git commands (e.g., `git -C /path/to/worktree diff`). Issue each git command as a **separate Bash tool call** — never chain with `&&` or `;`.
-  - **pytest:** Run from the worktree directory: `cd {worktree_path} && poetry run pytest tests/ -x -q`. Running pytest from the main repo with worktree test paths will import wrong code and produce phantom failures.
+  - **pytest:** Always run from the worktree directory: `cd {worktree_path} && poetry run pytest tests/ -x -q`. The `cd` is **required** so that Python imports the worktree's code, not the main repo's.
+    - **NEVER run pytest from the main repo with worktree test paths** (e.g., `cd /main/repo && poetry run pytest pev-worktrees/.../tests/...`). This imports the main repo's code, not the worktree changes, producing false passes or phantom failures.
+    - **When tests fail, debug in the worktree.** Read the traceback and fix the code. Do not switch to running from the main repo as a workaround — the worktree setup is correct; the code has a bug.
   - **Other commands:** Pass absolute worktree paths as arguments where possible.
 
 ## Budget Management
