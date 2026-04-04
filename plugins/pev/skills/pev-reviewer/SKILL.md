@@ -230,7 +230,7 @@ The orchestrator writes this to the manifest and dispatches a fresh incarnation.
 
 **Two budget mechanisms limit your work:**
 
-- **maxTurns (60)** — counts assistant response turns, not tool calls. Each NEEDS_INPUT round-trip costs at least 2 turns.
+- **maxTurns (100)** is a hard cutoff on assistant response turns. You will not receive a warning when it approaches — your context window naturally degrades over a long session, and the cutoff exists to preserve the quality of your work rather than letting it degrade. **If you are cut off mid-work, nothing is lost.** The orchestrator automatically treats it as `CONTINUING` — your manifest writes are all preserved. The next incarnation picks up where you left off with a fresh context and full budget. The tool budget warnings are your active planning signal; maxTurns is a safety net you don't need to manage. Each NEEDS_INPUT round-trip costs at least 2 turns.
 - **Tool budget hook (gate at 55)** — counts actual tool calls. Advisory warnings at 30 and 45. At 55, only `cortex_update_section` is allowed — exploration tools are blocked but you can still write progress.
 
 **Returning `CONTINUING` is normal, not a failure.** The checkpoint mechanism exists so you can do quality work across multiple incarnations. Rushing through passes under budget pressure produces worse reviews than cleanly handing off.

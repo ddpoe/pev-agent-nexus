@@ -2,7 +2,7 @@
 name: pev-reviewer
 description: PEV Reviewer — reviews Builder's code against Architect pitch (spec compliance, functionality preservation, code quality)
 model: inherit
-maxTurns: 60
+maxTurns: 100
 tools:
   # Read-only code tools
   - Read

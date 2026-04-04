@@ -296,7 +296,7 @@ The orchestrator relays your questions to the user and resumes you with the answ
 
 **Two budget mechanisms limit your work:**
 
-- **maxTurns (100)** — counts assistant response turns, not tool calls.
+- **maxTurns (100)** is a hard cutoff on assistant response turns. You will not receive a warning when it approaches — your context window naturally degrades over a long session, and the cutoff exists to preserve the quality of your work rather than letting it degrade. **If you are cut off mid-work, nothing is lost.** The orchestrator automatically treats it as `CONTINUING` — your committed code, manifest writes, and marked-clean nodes are all preserved. The next incarnation picks up where you left off with a fresh context and full budget. The tool budget warnings are your active planning signal; maxTurns is a safety net you don't need to manage.
 - **Tool budget hook (gate at 65)** — counts actual tool calls. Advisory warnings at 40 and 55. At 65, only doc-write tools (`cortex_update_section`, `cortex_write_doc`, `cortex_add_section`, `cortex_add_link`, `cortex_mark_clean`, `cortex_build`, `cortex_check`) are allowed — read-only exploration tools are blocked but you can still write docs and mark nodes.
 
 **Returning `CONTINUING` is normal, not a failure.** Already-marked-clean nodes won't appear stale on the next incarnation's `cortex_check`, so progress is preserved automatically.

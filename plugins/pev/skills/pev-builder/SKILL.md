@@ -266,7 +266,7 @@ The orchestrator dispatches a fresh Builder incarnation to the **same worktree**
 
 **Two budget mechanisms limit your work:**
 
-- **maxTurns (100)** — counts assistant response turns, not tool calls.
+- **maxTurns (100)** is a hard cutoff on assistant response turns. You will not receive a warning when it approaches — your context window naturally degrades over a long session, and the cutoff exists to preserve the quality of your work rather than letting it degrade. **If you are cut off mid-work, nothing is lost.** The orchestrator automatically treats it as `CONTINUING` — your committed code, manifest writes, and marked-clean nodes are all preserved. The next incarnation picks up where you left off with a fresh context and full budget. The tool budget warnings are your active planning signal; maxTurns is a safety net you don't need to manage.
 - **Tool budget hook (gate at 80)** — counts actual tool calls. Advisory warnings at 50 and 70. At 80, cortex exploration tools (`cortex_source`, `cortex_search`, `cortex_graph`, `cortex_read_doc`, `cortex_render`) are blocked. You keep: `Bash`, `Read`, `Grep`, `Glob`, `Edit`, `Write`, `cortex_update_section`, `cortex_add_section`.
 
 **Returning `CONTINUING` is normal, not a failure.** The checkpoint mechanism exists so you can do quality work across multiple incarnations. Rushing to finish under budget pressure produces worse results than cleanly handing off to the next incarnation.
