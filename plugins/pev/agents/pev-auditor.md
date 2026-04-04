@@ -46,13 +46,6 @@ hooks:
           command: "echo 'BLOCKED: Auditor cannot modify code — use cortex doc tools only' >&2; exit 2"
           timeout: 5
           statusMessage: "Checking Auditor tool scope..."
-    # Cortex tools: enforce worktree project_root
-    - matcher: "mcp__cortex__"
-      hooks:
-        - type: command
-          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pev-cortex-scope.sh"
-          timeout: 5
-          statusMessage: "Checking cortex project_root scope..."
     # Block destructive bulk-delete tools
     - matcher: "mcp__cortex__cortex_delete_doc|mcp__cortex__cortex_delete_section"
       hooks:

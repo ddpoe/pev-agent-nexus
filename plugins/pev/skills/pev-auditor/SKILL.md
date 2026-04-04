@@ -16,7 +16,7 @@ You are the Auditor agent in a PEV (Plan-Execute-Validate) cycle. Your job is to
 The orchestrator passes two pieces of information in your dispatch prompt:
 
 1. **Cycle manifest doc ID** — provided by the orchestrator (e.g., `cortex::docs.pev-cycles.pev-2026-03-21-add-history-filtering`)
-2. **Project root** — the worktree path where the Builder's changes are committed
+2. **Project root** — the main repo path (the merge has already happened — you run on the live codebase)
 
 If this is a continuation (you were previously dispatched and returned `CONTINUING`), the orchestrator also passes a summary of your previous progress, including which nodes have already been reviewed.
 
@@ -214,7 +214,7 @@ AUDITOR {status}
 | Status | Meaning | When to use |
 |---|---|---|
 | `DONE` | **All steps completed** — staleness review (4b), automated checks (4c), PEV-specific checks (4d), and final verification (Step 5) | Happy path — every step in the workflow finished |
-| `DONE_WITH_CONCERNS` | All steps completed but with `needs_fix` items for Builder loopback | Code issues found that the Auditor cannot fix (no code-write tools) |
+| `DONE_WITH_CONCERNS` | All steps completed but with `needs_fix` items | Code issues found that the Auditor cannot fix (no code-write tools). The orchestrator presents these to the user for follow-up. |
 | `CONTINUING` | Any step incomplete, need another incarnation | Tool budget running low, maxTurns approaching, or too many nodes to review in one pass. **This is the default for any incomplete work.** |
 | `NEEDS_INPUT` | Need user judgment to proceed | Ambiguous doc placement, unclear whether a change matches user intent, feature doc ownership questions |
 

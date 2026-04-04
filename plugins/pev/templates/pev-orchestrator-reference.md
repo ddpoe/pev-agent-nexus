@@ -66,7 +66,7 @@ Format:
 ```
 
 - `cycle_doc_id`: the full cortex doc ID for the cycle manifest: `cortex::docs.pev-cycles.{cycle-id}`. The `cortex` prefix comes from `cortex.toml` (`project_id`). All dispatch prompts and hooks use this value.
-- `worktree_path`: absolute path to the worktree created in Phase 1. All agents receive this — hooks use it to scope Write/Edit and cortex `project_root` calls.
+- `worktree_path`: absolute path to the worktree created in Phase 1. Builder and Reviewer receive this — hooks use it to scope Write/Edit, Bash, and cortex `project_root` calls. **Clear this field (set to `null`) before dispatching the Auditor** — the Auditor runs on main after merge.
 - `{agent}`: `architect`, `builder`, `reviewer`, or `auditor`
 - `{incarnation}`: starts at 1, increments per re-dispatch
 - A fresh counter_file path (file doesn't exist yet) starts at 0 automatically — no explicit reset needed
@@ -74,7 +74,7 @@ Format:
 
 ## Worktree Commands
 
-The orchestrator creates the worktree in Phase 1 (Intake), before any subagent is dispatched. All agents run inside this worktree. Merge happens in Phase 7 (Complete).
+The orchestrator creates the worktree in Phase 1 (Intake), before any subagent is dispatched. Builder and Reviewer run inside this worktree. Merge happens in Phase 6 (Merge), and the Auditor runs on main in Phase 7.
 
 **Create worktree (Phase 1 — Intake):**
 ```bash
@@ -114,7 +114,7 @@ git worktree list
 
 ## Merge Commands
 
-Phase 7 (Complete) — after all agents finish in the worktree. See Completion Cleanup for the full step-by-step sequence.
+Phase 6 (Merge) — after Review passes. Merge happens before the Auditor runs.
 
 **Merge worktree branch into main:**
 ```bash
@@ -196,19 +196,6 @@ This is a TARGETED FIX dispatch from the Reviewer. Fix ONLY the following issues
 {review failures/concerns}
 ```
 
-**Builder (fix — auditor loopback):**
-```
-You are the PEV Builder for cycle {cycle_id} (targeted fix — auditor loopback iteration {N}).
-
-Cycle manifest doc ID: {cycle_doc_id}
-Project root: {worktree_path}
-
-This is a TARGETED FIX dispatch. The Auditor found issues that need code changes. Fix ONLY the following items:
-{needs_fix items}
-
-You are working in the same worktree as the original build. Commit your fixes so the orchestrator can re-dispatch the Auditor.
-```
-
 **Reviewer:**
 ```
 You are the PEV Reviewer for cycle {cycle_id}.
@@ -235,7 +222,9 @@ Add: `RE-REVIEW: The Builder has addressed the following issues from your previo
 You are the PEV Auditor for cycle {cycle_id}.
 
 Cycle manifest doc ID: {cycle_doc_id}
-Project root: {worktree_path}
+Project root: {main_repo_path}
+
+The merge has already happened — you are running on the live codebase (main), not a worktree. Use {main_repo_path} as project_root for all cortex tool calls.
 
 Read the cycle manifest, then run cortex_build + cortex_check to determine the review scope. Follow the Auditor Reference Protocol for the full checklist.
 
@@ -276,7 +265,7 @@ Source code is not inlined. The Builder reads source on demand using cortex tool
 **When NOT to inline the pitch:**
 
 - Builder continuations (CONTINUING status): the Builder already has context from its previous incarnation
-- Builder fix dispatches (review/auditor loopback): these are targeted fixes with their own context
+- Builder fix dispatches (review loopback): these are targeted fixes with their own context
 
 ## Status Updates
 
@@ -290,12 +279,16 @@ cortex_update_section(
 )
 ```
 
-**Builder → Auditor:**
-Add: `- auditor: {now-timestamp} — builder complete, reviewed`
+**Builder → Merge:**
+Add: `- merge: {now-timestamp} — builder complete, reviewed, merging`
+Also add: `Commit SHA: {commit_sha}`
+
+**Merge → Auditor:**
+Add: `- auditor: {now-timestamp} — merged as {commit_sha}, auditing on main`
 
 **Auditor → Completed:**
-Add: `- completed: {now-timestamp} — merged, committed as {commit_sha}`
-Also add: `Commit SHA: {commit_sha}` and `Completed: {now-timestamp}`
+Add: `- completed: {now-timestamp} — audit complete`
+Also add: `Completed: {now-timestamp}`
 
 **Failure at any point:**
 Set `Phase: incomplete` with reason. Keep the `pev-active` tag so the cycle can be resumed.
@@ -337,29 +330,6 @@ cortex_add_section(
 )
 ```
 
-## Loopback Mechanics
-
-When the Auditor returns `DONE_WITH_CONCERNS` with `needs_fix` items, dispatch a targeted Builder to fix them in the same worktree.
-
-**Rules:**
-- Maximum 2 loopback iterations
-- Builder fix happens in the **same worktree** — no separate fix worktree or branch (merge hasn't happened yet)
-- Use the Builder fix (auditor loopback) dispatch prompt (see Dispatch Prompts section)
-- After Builder commits the fix, re-index the worktree: `cortex_build(project_root="{worktree_path}")`
-- Re-dispatch the Auditor pointing at the same worktree
-
-**After max iterations:**
-If the Auditor still returns `needs_fix` after iteration 2, surface remaining items to the user:
-```
-Auditor found remaining issues after 2 Builder loopback iterations:
-{remaining needs_fix items}
-
-Options:
-1. Fix these manually and re-run the Auditor
-2. Accept the current state and proceed to merge
-3. Abort the cycle
-```
-
 ## Commit Format
 
 Single commit containing all changes (code + docs).
@@ -381,9 +351,9 @@ EOF
 
 Capture the commit SHA: `git rev-parse HEAD`
 
-## Completion Cleanup
+## Merge Cleanup
 
-Phase 7 (Complete) — after human approves final audit results.
+Phase 6 (Merge) — after Review passes and human approves.
 
 1. **Merge worktree into main** (see Merge Commands section):
 ```bash
@@ -396,35 +366,41 @@ cortex_build(project_root="{main_repo_path}")
 cortex_check(project_root="{main_repo_path}")
 ```
 
-3. **Create audit checkpoint:**
-```bash
-poetry run cortex history checkpoint . --message "pev-cycle-{cycle-id}-audit-complete"
-```
+3. **Commit** with structured message (see Commit Format section). This finalizes the merge. Capture commit SHA.
 
-4. **Commit** with structured message (see Commit Format section). This finalizes the merge.
-
-5. **Remove worktree and branch** (must be after commit — `git branch -d` requires the branch to be merged into HEAD):
+4. **Remove worktree and branch** (must be after commit — `git branch -d` requires the branch to be merged into HEAD):
 ```bash
 git worktree remove pev-worktrees/{cycle-id}
 git branch -d pev/{cycle-id}
 ```
 
-6. **Update status to completed** (see Status Updates section).
+5. **Update pev-state.json** — clear `worktree_path` (set to `null` or remove the key). Update `counter_file` for Auditor.
 
-7. **Remove pev-active tag:** Read the full doc with `cortex_read_doc`, then `cortex_write_doc` to rewrite with `pev-active` removed from the tags list. Keep `pev-cycle` tag.
+## Completion Cleanup
 
-8. **Run efficiency analysis:** Find the current session's JSONL file and generate the efficiency report.
+Phase 8 (Complete) — after Auditor finishes.
+
+1. **Create audit checkpoint:**
+```bash
+poetry run cortex history checkpoint . --message "pev-cycle-{cycle-id}-audit-complete"
+```
+
+2. **Update status to completed** (see Status Updates section).
+
+3. **Remove pev-active tag:** Read the full doc with `cortex_read_doc`, then `cortex_write_doc` to rewrite with `pev-active` removed from the tags list. Keep `pev-cycle` tag.
+
+4. **Run efficiency analysis:** Find the current session's JSONL file and generate the efficiency report.
 ```bash
 python scripts/analyze_pev_session.py --find-cycle {cycle-id} --docjson --summary
 ```
 This writes a DocJSON report to `docs/pev-cycles/{cycle-id}-efficiency.json` and prints a compact summary. Present the summary to the user.
 
-9. **Delete state file:**
+5. **Delete state file:**
 ```bash
 rm -f .claude/pev-state.json
 ```
 
-10. **Invoke** `superpowers:finishing-a-development-branch` to present merge/PR options.
+6. **Invoke** `superpowers:finishing-a-development-branch` to present merge/PR options.
 
 ## Error Handling
 

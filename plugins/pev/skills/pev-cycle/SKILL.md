@@ -89,35 +89,39 @@ Handle status codes:
 - **FAIL**: Write review to cycle doc. Present failures to user. Redispatch Builder with the specific failures to fix (same worktree). After fix, re-index the worktree (`cortex_build`), then re-dispatch Reviewer. Max 2 review-fix loops before escalating to user.
 - **NEEDS_INPUT**: Relay the Reviewer's questions to the user via AskUserQuestion (same proxy-question protocol as the Architect). Resume with SendMessage containing the answers and the Reviewer's `context` field.
 
-### 6. Audit
+### 6. Merge
 
 **Re-index the worktree**: run `cortex_build(project_root=worktree_path)` then `cortex_check(project_root=worktree_path)`.
 
-Construct change-set from `git diff {baseline_sha}..HEAD` + Builder manifest. Write Builder manifest and change-set to cycle doc. Update status to `auditor` (see ref: `status-updates`).
+Construct change-set from `git diff {baseline_sha}..HEAD` + Builder manifest. Write Builder manifest and change-set to cycle doc.
 
-**HUMAN GATE** — Present implementation summary (files changed, tests, review verdict, deviations, cortex check results). "Approve to proceed to Auditor phase, or provide feedback?"
+**HUMAN GATE** — Present implementation summary (files changed, tests, review verdict, deviations, cortex check results). "Approve to merge into main and proceed to Auditor phase, or provide feedback?"
 
 - **Rejected**: Discuss options — redispatch Builder with feedback.
 
+Merge worktree branch into main, remove worktree/branch (see ref: `merge-commands`). Rebuild cortex on main. Single commit with structured message (see ref: `commit-format`). Capture commit SHA.
+
+**Update pev-state.json** — clear `worktree_path` (set to `null` or remove the key). The Auditor runs on main, not the worktree. Update `counter_file` for Auditor.
+
+### 7. Audit
+
+The Auditor runs on **main** (not a worktree). The merge has already happened — the Auditor reviews the merged code, updates docs, and marks stale nodes clean on the live codebase.
+
 Check for concurrent `pev-active` cycles in auditor phase (`cortex_list` with tag `pev-active`). Warn if found — only one Auditor should run at a time.
 
-Update pev-state.json counter_file for Auditor. Dispatch `pev-auditor` subagent pointing at the worktree (see ref: `dispatch-prompts`).
+Update status to `auditor` (see ref: `status-updates`). Dispatch `pev-auditor` subagent pointing at the **main repo** (see ref: `dispatch-prompts`).
 
 Parse return — extract report from `---IMPACT-REPORT---` separator (see ref: `manifest-parsing`).
 
 Handle status codes:
-- **DONE**: Write Impact Report to `auditor.impact-report` section. The change ledger is already in `auditor.change-ledger` (written by Auditor as it works). Proceed to Phase 7.
-- **DONE_WITH_CONCERNS** (has `needs_fix`): Builder loopback — max 2 iterations (see ref: `loopback-mechanics`). After fix, re-dispatch Auditor.
+- **DONE**: Write Impact Report to `auditor.impact-report` section. The change ledger is already in `auditor.change-ledger` (written by Auditor as it works). Proceed to Phase 8.
+- **DONE_WITH_CONCERNS** (has `needs_fix`): Present the `needs_fix` items to the user as "these need attention." Options: (1) address them in a follow-up PEV cycle, (2) fix manually, (3) accept and proceed. Then proceed to Phase 8.
 - **CONTINUING** (or no separator): The Auditor writes partial progress and change ledger entries to the manifest as it works. Increment incarnation, redispatch. Already-marked-clean nodes are skipped automatically.
 - **NEEDS_INPUT**: Relay the Auditor's questions to the user via AskUserQuestion (same proxy-question protocol as the Architect). Resume with SendMessage containing the answers and the Auditor's `context` field.
 
-### 7. Complete
+### 8. Complete
 
-**HUMAN GATE** — Present final audit results (nodes reviewed, change ledger entries, links, decisions, concerns). "Approve to merge and complete this PEV cycle?"
-
-Merge worktree branch into main, remove worktree/branch, rebuild cortex on main, run cortex_check (see ref: `merge-commands`).
-
-Create audit checkpoint. Single commit with structured message (see ref: `commit-format`). Update cycle manifest status to `completed`, remove `pev-active` tag.
+Create audit checkpoint (see ref: `completion-cleanup`). Update cycle manifest status to `completed`, remove `pev-active` tag.
 
 Run efficiency analysis and present the compact summary (see ref: `completion-cleanup`):
 ```bash

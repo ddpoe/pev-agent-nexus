@@ -49,7 +49,7 @@ After `cortex_build` + `cortex_check`, review every stale node:
 
 - **AGREE** (node is fine) → `mark_clean` with reason → remove tag. Scope: `expected` if in change-set, `collateral` if not.
 - **DOC NEEDS UPDATE** → `cortex_update_section` → `mark_clean` → remove tag
-- **CODE NEEDS FIX** → add to `needs_fix` in Impact Report, do NOT mark clean
+- **CODE NEEDS FIX** → add to `needs_fix` in Impact Report for user review, do NOT mark clean
 
 Also re-check any `AGENT_VERIFIED` events via `cortex_report` — verify the agent's judgment was correct.
 
@@ -146,20 +146,17 @@ Findings use category `workflow_markers`.
 ### Triage order
 Process findings in this order (highest impact first):
 
-1. **CODE NEEDS FIX** items → add to `needs_fix` in Impact Report for Builder loopback
+1. **CODE NEEDS FIX** items → add to `needs_fix` in Impact Report for user review
 2. **DOC NEEDS UPDATE** → fix via `cortex_update_section` + `mark_clean`
 3. **Unlinked public nodes** → `cortex_add_link` to existing doc sections
 4. **Orphan links** → remove dead links
-5. **Logging / test / workflow gaps** → add to `needs_fix` for Builder loopback
+5. **Logging / test / workflow gaps** → add to `needs_fix` for user review
 6. **Section length / fan-out** → refactor docs for maintainability
 
 ### After all findings resolved
 1. `cortex_build` — re-index
 2. `cortex_check` — verify clean state on resolved nodes
 3. `cortex history checkpoint --message "pev-cycle-{cycle-id}-audit-complete"` — mark the audit as a reference point
-
-### Builder loopback
-If `needs_fix` has actionable items, the orchestrator dispatches a targeted Builder (in the same worktree, max 2 iterations). After the Builder returns, the Auditor re-runs from the staleness review step. After 2 loopback iterations, remaining issues are surfaced to the user.
 
 ## Quick Reference Checklist
 
