@@ -223,9 +223,13 @@ The architect pitch has been written to the cycle manifest. Ready for human revi
 **Two budget mechanisms limit your work:**
 
 - **maxTurns (100)** — counts assistant response turns, not tool calls. Each NEEDS_INPUT round-trip costs at least 2 turns (your return + the resume). Multiple brainstorming rounds consume turns quickly.
-- **Tool budget hook (gate at 40)** — counts actual tool calls. Advisory warnings at 25 and 35. At 40, only doc-write tools (`cortex_update_section`, `cortex_write_doc`, `cortex_add_section`, `cortex_build`) are allowed — read-only exploration tools are blocked.
+- **Tool budget hook (gate at 40)** — counts actual tool calls. Advisory warnings at 25 and 35. At 40, only doc-write tools (`cortex_update_section`, `cortex_write_doc`, `cortex_add_section`, `cortex_build`) are allowed — read-only exploration tools are blocked but you can still write to the manifest.
 
-The tool gate is the binding constraint. When you see the warning at 25, you should be done exploring and writing sections. When you see the urgent warning at 35, finish your current section write and return.
+**Returning `CONTINUING` is normal, not a failure.** Sections you've already written to the manifest are preserved — the next incarnation reads them and picks up where you left off.
+
+- **At 25 (warning):** Check your progress — you should be done exploring and into writing sections. If still reading code, tighten your scope.
+- **At 35 (urgent):** Finish your current section write if close. If not, write what you have to the manifest so the next incarnation can continue. Do not start exploring new areas.
+- **At 40 (gate):** Only doc-write tools work. Save your progress and return `CONTINUING`.
 
 ### Handling CONTINUING (incomplete work)
 

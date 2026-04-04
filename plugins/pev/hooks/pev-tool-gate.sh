@@ -57,4 +57,4 @@ fi
 
 # Blocked — deny with reason
 ALLOWED_READABLE="${ALLOWLIST_CSV//,/, }"
-echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"TOOL BUDGET EXHAUSTED (${COUNT}/${LIMIT}). ${TOOL_NAME} is blocked. Only these tools are allowed: ${ALLOWED_READABLE}. Finish your work and return your structured summary.\"}}"
+echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"${TOOL_NAME} is blocked (budget ${COUNT}/${LIMIT}). Tools still available: ${ALLOWED_READABLE}. Use cortex_update_section to save your state to the cycle manifest, then return with CONTINUING status. The next incarnation continues from your progress.\"}}"

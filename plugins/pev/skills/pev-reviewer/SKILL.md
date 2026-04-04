@@ -218,21 +218,21 @@ The orchestrator writes this to the manifest and dispatches a fresh incarnation.
 - **Read the constraints section carefully**: The Architect's "don't go here" list is as important as the user stories.
 - **Check tests actually test what they claim**: A test named `test_feature_x` that doesn't actually exercise feature X is worse than no test.
 - **Be specific about PARTIAL**: Say exactly what's missing — "test covers happy path but not error case" is actionable, "needs more tests" is not.
-- **Run the tests**: Use `poetry run pytest {test_file}` to verify tests actually pass. A review that says PASS on a failing test is a review failure.
-- **Bash conventions for worktree commands.** Claude Code requires interactive approval for compound commands and `cd`. Follow these rules:
-  - Use `git -C <worktree-path>` for all git commands (e.g., `git -C /path/to/worktree diff`, `git -C /path/to/worktree log`).
-  - Issue each git command as a **separate Bash tool call** — never chain with `&&` or `;`.
-  - For non-git commands, pass absolute worktree paths as arguments (e.g., `poetry run pytest --rootdir=/path/to/worktree`).
-  - Do NOT use `cd <path> && ...` or `git ... && git ...` — both require approval in subagent contexts.
+- **Run the tests**: Use `cd {worktree_path} && poetry run pytest {test_file}` to verify tests actually pass. The `cd` is **required** so that `poetry run` activates the worktree's venv and Python imports the worktree's code, not the main repo's. A review that says PASS on a failing test is a review failure.
+- **Bash conventions for worktree commands:**
+  - **git:** Use `git -C {worktree_path}` for all git commands (e.g., `git -C /path/to/worktree diff`). Issue each git command as a **separate Bash tool call** — never chain with `&&` or `;`.
+  - **pytest:** Run from the worktree directory: `cd {worktree_path} && poetry run pytest tests/ -x -q`. Running pytest from the main repo with worktree test paths will import wrong code and produce phantom failures.
+  - **Other commands:** Pass absolute worktree paths as arguments where possible.
 
 ## Budget Management
 
 **Two budget mechanisms limit your work:**
 
 - **maxTurns (60)** — counts assistant response turns, not tool calls. Each NEEDS_INPUT round-trip costs at least 2 turns.
-- **Tool budget hook (gate at 55)** — counts actual tool calls. Advisory warnings at 30 and 45. At 55, only `cortex_update_section` is allowed — all exploration tools are blocked.
+- **Tool budget hook (gate at 55)** — counts actual tool calls. Advisory warnings at 30 and 45. At 55, only `cortex_update_section` is allowed — exploration tools are blocked but you can still write progress.
 
-The tool gate is the binding constraint:
-- **At 30 (warning):** You should be finishing Pass 1 and into Pass 2. If still in Pass 1, you're exploring too deeply — tighten scope.
-- **At 45 (urgent):** Finish your current pass, write progress to the manifest, and prepare to return.
-- **At 55 (gate):** Only `cortex_update_section` works. Write final progress and return `CONTINUING`.
+**Returning `CONTINUING` is normal, not a failure.** The checkpoint mechanism exists so you can do quality work across multiple incarnations. Rushing through passes under budget pressure produces worse reviews than cleanly handing off.
+
+- **At 30 (warning):** Check your progress — are you on track to finish all three passes? If still in Pass 1, tighten scope rather than exploring every node.
+- **At 45 (urgent):** Finish your current pass if close. If not, write your progress to `reviewer.progress` via `cortex_update_section` so the next incarnation can skip completed passes. Do not start a new pass.
+- **At 55 (gate):** Only `cortex_update_section` works. Save your progress and return `CONTINUING`. The next incarnation picks up from your completed passes with a fresh budget.

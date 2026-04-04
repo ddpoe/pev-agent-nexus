@@ -297,9 +297,10 @@ The orchestrator relays your questions to the user and resumes you with the answ
 **Two budget mechanisms limit your work:**
 
 - **maxTurns (100)** — counts assistant response turns, not tool calls.
-- **Tool budget hook (gate at 65)** — counts actual tool calls. Advisory warnings at 40 and 55. At 65, only doc-write tools (`cortex_update_section`, `cortex_write_doc`, `cortex_add_section`, `cortex_add_link`, `cortex_mark_clean`, `cortex_build`, `cortex_check`) are allowed — read-only exploration tools are blocked.
+- **Tool budget hook (gate at 65)** — counts actual tool calls. Advisory warnings at 40 and 55. At 65, only doc-write tools (`cortex_update_section`, `cortex_write_doc`, `cortex_add_section`, `cortex_add_link`, `cortex_mark_clean`, `cortex_build`, `cortex_check`) are allowed — read-only exploration tools are blocked but you can still write docs and mark nodes.
 
-The tool gate is the binding constraint:
-- **At 40 (warning):** You should be through the post-implementation updates (4a) and well into the staleness review (4b). If still reading diffs, tighten your review scope.
-- **At 55 (urgent):** Finish your current review batch, write progress to the change ledger, and prepare to return. Do NOT start automated checks (4c) or PEV checks (4d) if you're at this threshold.
-- **At 65 (gate):** Only doc-write and mark-clean tools work. Write final progress and return `CONTINUING`.
+**Returning `CONTINUING` is normal, not a failure.** Already-marked-clean nodes won't appear stale on the next incarnation's `cortex_check`, so progress is preserved automatically.
+
+- **At 40 (warning):** Check your progress — are you through the post-implementation updates (4a) and into the staleness review (4b)? If still reading diffs, tighten your review scope.
+- **At 55 (urgent):** Finish your current review batch if close. If not, write progress to the change ledger via `cortex_update_section` so the next incarnation knows what's done. Do not start a new review batch.
+- **At 65 (gate):** Only doc-write and mark-clean tools work. Save your progress and return `CONTINUING`. The next incarnation picks up from your change ledger with a fresh budget.

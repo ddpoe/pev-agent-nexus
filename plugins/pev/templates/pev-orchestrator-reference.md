@@ -162,7 +162,8 @@ Cycle manifest doc ID: {cycle_doc_id}
 Project root: {worktree_path}
 
 Your working directory is: {worktree_path}
-Use absolute paths rooted there. Do NOT cd — your cwd is already set.
+Use absolute paths rooted there. Use git -C {worktree_path} for git commands.
+For pytest: cd {worktree_path} && poetry run pytest (cd is required so Python imports worktree code).
 The worktree has a cortex DB snapshot — use {worktree_path} as project_root for all cortex tool calls.
 
 == ARCHITECT PITCH ==

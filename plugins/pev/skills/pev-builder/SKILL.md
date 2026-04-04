@@ -255,20 +255,20 @@ The orchestrator dispatches a fresh Builder incarnation to the **same worktree**
 - **User stories are acceptance criteria.** When those outcomes work, you're done. Don't gold-plate.
 - **Use `poetry run` for all Python commands.** This project uses Poetry for dependency management.
 - **Use Google-style docstrings** for any new functions you write.
-- **Bash conventions for worktree commands.** Claude Code requires interactive approval for compound commands and `cd`. Follow these rules:
-  - Use `git -C <worktree-path>` for all git commands (e.g., `git -C /path/to/worktree diff`, `git -C /path/to/worktree log`).
-  - Issue each git command as a **separate Bash tool call** — never chain with `&&` or `;`.
-  - For non-git commands, pass absolute worktree paths as arguments (e.g., `poetry run pytest --rootdir=/path/to/worktree`).
-  - Do NOT use `cd <path> && ...` or `git ... && git ...` — both require approval in subagent contexts.
+- **Bash conventions for worktree commands:**
+  - **git:** Use `git -C {worktree_path}` for all git commands (e.g., `git -C /path/to/worktree diff`). Issue each git command as a **separate Bash tool call** — never chain with `&&` or `;`.
+  - **pytest:** Run from the worktree directory: `cd {worktree_path} && poetry run pytest tests/ -x -q`. The `cd` is **required** so that `poetry run` activates the worktree's venv and Python imports the worktree's code, not the main repo's. Running pytest from the main repo with worktree test paths will import wrong code and produce phantom failures.
+  - **Other commands:** Pass absolute worktree paths as arguments where possible (e.g., `poetry run python {worktree_path}/scripts/foo.py`).
 
 ## Budget Management
 
 **Two budget mechanisms limit your work:**
 
 - **maxTurns (100)** — counts assistant response turns, not tool calls.
-- **Tool budget hook (gate at 80)** — counts actual tool calls. Advisory warnings at 50 and 70. At 80, only `Bash`, `Edit`, `Write`, and `cortex_update_section`/`cortex_add_section` are allowed — read-only exploration tools are blocked.
+- **Tool budget hook (gate at 80)** — counts actual tool calls. Advisory warnings at 50 and 70. At 80, cortex exploration tools (`cortex_source`, `cortex_search`, `cortex_graph`, `cortex_read_doc`, `cortex_render`) are blocked. You keep: `Bash`, `Read`, `Grep`, `Glob`, `Edit`, `Write`, `cortex_update_section`, `cortex_add_section`.
 
-The tool gate is the binding constraint:
-- **At 50 (warning):** You should have your build plan written and be well into implementation tasks. If still exploring, you're going too deep — the Architect already provided orientation.
-- **At 70 (urgent):** Finish your current task, run tests, commit, update progress, and prepare to return. Do NOT start a new task.
-- **At 80 (gate):** Only implementation and manifest-write tools work. Commit what you have and return `CONTINUING`.
+**Returning `CONTINUING` is normal, not a failure.** The checkpoint mechanism exists so you can do quality work across multiple incarnations. Rushing to finish under budget pressure produces worse results than cleanly handing off to the next incarnation.
+
+- **At 50 (warning):** Check your progress against the build plan. If many tasks remain, focus on completing one at a time rather than exploring broadly.
+- **At 70 (urgent):** Finish your current task if close. If not, document your progress in `builder.progress` via `cortex_update_section` — what is done, what is in progress, what remains, and context the next incarnation needs. Do not start a new task.
+- **At 80 (gate):** Cortex exploration tools are blocked. You can still read files, run tests, edit code, and write to the manifest. Save your state, commit, and return `CONTINUING`. The next incarnation picks up where you left off with a fresh budget.
