@@ -31,6 +31,13 @@ hooks:
           command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pev-doc-scope.sh"
           timeout: 5
           statusMessage: "Checking doc scope..."
+    # Bash: block cd outside worktree
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pev-bash-scope.sh"
+          timeout: 5
+          statusMessage: "Checking bash scope..."
     # Write/Edit: scope to worktree directory only
     - matcher: "Write|Edit"
       hooks:

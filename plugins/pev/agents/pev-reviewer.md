@@ -25,6 +25,13 @@ skills:
   - pev-reviewer
 hooks:
   PreToolUse:
+    # Bash: block cd outside worktree
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pev-bash-scope.sh"
+          timeout: 5
+          statusMessage: "Checking bash scope..."
     # Block code-write and most doc-write tools
     - matcher: "Edit|Write|NotebookEdit|mcp__cortex__cortex_write_doc|mcp__cortex__cortex_add_section|mcp__cortex__cortex_add_link|mcp__cortex__cortex_mark_clean|mcp__cortex__cortex_build|mcp__cortex__cortex_delete_doc|mcp__cortex__cortex_delete_section|mcp__cortex__cortex_delete_link|mcp__cortex__cortex_update_doc_meta|mcp__cortex__cortex_purge_node"
       hooks:
