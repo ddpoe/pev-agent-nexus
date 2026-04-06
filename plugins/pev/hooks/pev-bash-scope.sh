@@ -4,8 +4,8 @@
 # This prevents the anti-pattern of running pytest from the main repo
 # with worktree test paths (which imports the wrong code).
 #
-# Reads worktree_path from .claude/pev-state.json. If pev-state.json
-# is missing or has no worktree_path, the hook is a no-op.
+# Reads worktree_path from .pev-state.json. If .pev-state.json is
+# missing or has no worktree_path, the hook is a no-op.
 
 INPUT=$(cat)
 
@@ -14,11 +14,11 @@ PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
 if [ -z "$PROJECT_ROOT" ]; then
   PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
   while [ -n "$PROJECT_ROOT" ] && [ "$PROJECT_ROOT" != "/" ]; do
-    [ -f "$PROJECT_ROOT/.claude/pev-state.json" ] && break
+    [ -f "$PROJECT_ROOT/.pev-state.json" ] && break
     PROJECT_ROOT=$(dirname "$PROJECT_ROOT")
   done
 fi
-STATE_FILE="$PROJECT_ROOT/.claude/pev-state.json"
+STATE_FILE="$PROJECT_ROOT/.pev-state.json"
 
 # No state file → not in a PEV cycle → allow
 if [ ! -f "$STATE_FILE" ]; then

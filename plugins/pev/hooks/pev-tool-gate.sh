@@ -6,8 +6,8 @@
 # Args: <limit> [allowlist]
 #   limit     — hard block threshold
 #   allowlist — pipe-separated tool names allowed past limit
-# Counter file path read from .claude/pev-state.json (field: counter_file)
-# Falls back to /tmp/pev-tool-counter-spike if pev-state.json missing.
+# Counter file path read from .pev-state.json (field: counter_file)
+# Falls back to /tmp/pev-tool-counter-spike if .pev-state.json missing.
 
 # Read hook input from stdin to get the tool name
 INPUT=$(cat)
@@ -19,18 +19,18 @@ LIMIT=${1:-10}
 ALLOWLIST_CSV=${2:-"cortex_update_section,cortex_write_doc,cortex_add_section,cortex_mark_clean,cortex_build,cortex_check"}
 ALLOWLIST="${ALLOWLIST_CSV//,/|}"
 
-# Counter file from pev-state.json
+# Counter file from .pev-state.json
 # Resolve project root: prefer CLAUDE_PROJECT_DIR, then parse cwd from stdin input
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
 if [ -z "$PROJECT_ROOT" ]; then
   PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
-  # Walk up from cwd to find .claude/pev-state.json (handles worktree cwd)
+  # Walk up from cwd to find .pev-state.json (handles worktree cwd)
   while [ -n "$PROJECT_ROOT" ] && [ "$PROJECT_ROOT" != "/" ]; do
-    [ -f "$PROJECT_ROOT/.claude/pev-state.json" ] && break
+    [ -f "$PROJECT_ROOT/.pev-state.json" ] && break
     PROJECT_ROOT=$(dirname "$PROJECT_ROOT")
   done
 fi
-STATE_FILE="$PROJECT_ROOT/.claude/pev-state.json"
+STATE_FILE="$PROJECT_ROOT/.pev-state.json"
 if [ -f "$STATE_FILE" ]; then
   PEV_TOOL_COUNTER=$(jq -r '.counter_file // empty' "$STATE_FILE" 2>/dev/null)
 fi

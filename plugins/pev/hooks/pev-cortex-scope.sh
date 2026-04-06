@@ -1,21 +1,21 @@
 #!/bin/bash
 # pev-cortex-scope.sh — PreToolUse hook for PEV subagents
 # Enforces that cortex MCP tool calls use the worktree's project_root,
-# not the main repo. Reads worktree_path from .claude/pev-state.json.
-# No-op when pev-state.json is missing or has no worktree_path.
+# not the main repo. Reads worktree_path from .pev-state.json.
+# No-op when .pev-state.json is missing or has no worktree_path.
 
 INPUT=$(cat)
 
-# Resolve project root to find pev-state.json
+# Resolve project root to find .pev-state.json
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
 if [ -z "$PROJECT_ROOT" ]; then
   PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
   while [ -n "$PROJECT_ROOT" ] && [ "$PROJECT_ROOT" != "/" ]; do
-    [ -f "$PROJECT_ROOT/.claude/pev-state.json" ] && break
+    [ -f "$PROJECT_ROOT/.pev-state.json" ] && break
     PROJECT_ROOT=$(dirname "$PROJECT_ROOT")
   done
 fi
-STATE_FILE="$PROJECT_ROOT/.claude/pev-state.json"
+STATE_FILE="$PROJECT_ROOT/.pev-state.json"
 
 # No state file → not in a PEV cycle → allow
 if [ ! -f "$STATE_FILE" ]; then

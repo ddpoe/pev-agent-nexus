@@ -47,13 +47,15 @@ Required values to fill:
 - `auditor.change-ledger`: Filled by Auditor as it works
 - `auditor.impact-report`: Filled by Orchestrator from Auditor return
 
-After writing, the doc is indexed as `cortex::docs.pev-cycles.{cycle-id}`. Store this as `cycle_doc_id` in pev-state.json.
+After writing, the doc is indexed as `cortex::docs.pev-cycles.{cycle-id}`. Store this as `cycle_doc_id` in `.pev-state.json`.
 
 All other sections start with placeholder content — Architect, Builder, and Auditor fill them.
 
 ## State File
 
-Write `.claude/pev-state.json` before each subagent dispatch. The doc-scope, cortex-scope, worktree-scope, and tool-budget hooks all read this file.
+Write `.pev-state.json` to the **worktree root** (`pev-worktrees/{cycle-id}/.pev-state.json`) before each subagent dispatch. The doc-scope, cortex-scope, worktree-scope, and tool-budget hooks all find this file via walk-up from the agent's cwd.
+
+For the **Auditor phase only** (runs on main after worktree is removed), write `.pev-state.json` to the **main repo root**. This is a serial mutex — check for an existing `.pev-state.json` on main before writing (see Auditor Mutex section).
 
 Format:
 ```json
@@ -66,11 +68,32 @@ Format:
 ```
 
 - `cycle_doc_id`: the full cortex doc ID for the cycle manifest: `cortex::docs.pev-cycles.{cycle-id}`. The `cortex` prefix comes from `cortex.toml` (`project_id`). All dispatch prompts and hooks use this value.
-- `worktree_path`: absolute path to the worktree created in Phase 1. Builder and Reviewer receive this — hooks use it to scope Write/Edit, Bash, and cortex `project_root` calls. **Clear this field (set to `null`) before dispatching the Auditor** — the Auditor runs on main after merge.
+- `worktree_path`: absolute path to the worktree created in Phase 1. Builder and Reviewer receive this — hooks use it to scope Write/Edit, Bash, and cortex `project_root` calls. Not used for Auditor (runs on main).
 - `{agent}`: `architect`, `builder`, `reviewer`, or `auditor`
 - `{incarnation}`: starts at 1, increments per re-dispatch
 - A fresh counter_file path (file doesn't exist yet) starts at 0 automatically — no explicit reset needed
 - Use the Write tool to create this file
+
+## Auditor Mutex
+
+Before dispatching the Auditor, check if `.pev-state.json` exists in the main repo root:
+
+```bash
+[ -f .pev-state.json ] && cat .pev-state.json
+```
+
+If it exists, another cycle's Auditor is running. Present to user:
+```
+Another PEV cycle's Auditor is active: {cycle_id from existing state file}
+Options:
+1. Wait for it to finish (check again later)
+2. End the other Auditor and proceed (deletes the state file)
+3. Skip Auditor phase for this cycle
+```
+
+**HUMAN GATE** — wait for user decision. If user chooses option 2, `rm -f .pev-state.json` and proceed.
+
+When clear, write `.pev-state.json` to main repo root with `cycle_id`, `cycle_doc_id`, and `counter_file` for the Auditor (no `worktree_path` — Auditor runs on main). Delete it in Phase 8 cleanup.
 
 ## Worktree Commands
 
@@ -208,8 +231,12 @@ Review the Builder's code changes against the Architect's pitch. You are read-on
 The Architect's pitch is in the cycle manifest (sections: user-stories, solution-sketch, constraints, affected-nodes).
 The Builder's build plan and progress are in the cycle manifest. Read builder.build-plan, builder.progress, and the decisions section for context. Also check architect.required-artifacts against the Builder's output.
 
-Git diff of the Builder's changes:
-{git diff output from worktree branch vs baseline}
+Files changed by the Builder:
+{git diff --stat output from worktree branch vs baseline}
+
+Use cortex tools (cortex_diff, cortex_source, cortex_graph) to review the actual code changes on demand.
+
+Include a test_coverage table in your review: for each user story, list which tests cover it, what each test verifies, and any gaps.
 
 Follow your skill instructions. Return your review verdict when done.
 ```
@@ -374,7 +401,7 @@ git worktree remove pev-worktrees/{cycle-id}
 git branch -d pev/{cycle-id}
 ```
 
-5. **Update pev-state.json** — clear `worktree_path` (set to `null` or remove the key). Update `counter_file` for Auditor.
+5. **State file cleanup** — the worktree's `.pev-state.json` was removed with the worktree. No action needed here. The Auditor's state file is written separately (see Auditor Mutex section).
 
 ## Completion Cleanup
 
@@ -395,9 +422,9 @@ python scripts/analyze_pev_session.py --find-cycle {cycle-id} --docjson --summar
 ```
 This writes a DocJSON report to `docs/pev-cycles/{cycle-id}-efficiency.json` and prints a compact summary. Present the summary to the user.
 
-5. **Delete state file:**
+5. **Delete Auditor state file:**
 ```bash
-rm -f .claude/pev-state.json
+rm -f .pev-state.json
 ```
 
 6. **Invoke** `superpowers:finishing-a-development-branch` to present merge/PR options.

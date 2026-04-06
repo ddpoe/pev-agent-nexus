@@ -13,7 +13,7 @@ You receive from the Orchestrator:
 - **Cycle manifest doc ID** — contains the Architect's pitch (user stories, constraints, affected nodes)
 - **Worktree path** — where the Builder's code lives (or main repo post-merge)
 - **Builder manifest** — what the Builder claims it built (if available)
-- **Git diff** — the actual changes (provided in prompt or via `git diff`)
+- **Git diff stat** — file-level change statistics (provided in prompt). Use cortex tools (`cortex_diff`, `cortex_source`, `cortex_graph`) for actual code review.
 
 ## Cortex Tools Reference
 
@@ -54,8 +54,10 @@ For each user story in the Architect's pitch:
 
 1. Read the user story
 2. Find the code that implements it (use cortex_search, cortex_source, grep/read as appropriate)
-3. Find the test that verifies it
+3. Find the test(s) that verify it — record what each test actually exercises (not just the test name)
 4. Verdict: **PASS** (code + test cover it), **PARTIAL** (code exists, test missing or incomplete), or **FAIL** (not implemented)
+
+**Build the test coverage table as you go.** For each user story, record every test that covers it and a one-line description of what that test verifies. If a story has no test coverage, mark it as a gap. This table is included in your review verdict for the user to evaluate test scope.
 
 Also check:
 - **Required artifacts**: For each artifact declared by the Architect in `required-artifacts`, verify it exists. Migration script? New test file? Updated CLI output? If an artifact is missing, verdict is PARTIAL at best.
@@ -172,6 +174,19 @@ End your response with this separator and structured JSON verdict:
       "description": "Magic number 0.8 threshold — consider named constant"
     }
   ],
+  "test_coverage": [
+    {
+      "story": "As a user, I want per-dimension staleness so I can see what kind of drift occurred",
+      "tests": [
+        {"test": "tests/test_staleness.py::test_two_column", "verifies": "Staleness splits into own_status and link_status columns"},
+        {"test": "tests/test_staleness.py::test_dimension_display", "verifies": "CLI output shows both dimensions separately"}
+      ]
+    },
+    {
+      "story": "As a user, I want to mark individual dimensions clean",
+      "tests": []
+    }
+  ],
   "scope_creep": [],
   "decisions_review": "Builder deviations D-2, D-3 are reasonable — FTS5 virtual table is cleaner than the Architect's suggested approach",
   "summary": "All user stories pass with tests. One minor quality issue. No scope creep."
@@ -202,6 +217,14 @@ If you cannot complete all three passes in this incarnation, update `reviewer.pr
       "artifact": "New delete tool",
       "present": true,
       "location": "cortex/mcp_server.py::cortex_delete"
+    }
+  ],
+  "test_coverage": [
+    {
+      "story": "As a user, I want...",
+      "tests": [
+        {"test": "tests/test_mcp.py::test_delete", "verifies": "Delete tool removes node and returns confirmation"}
+      ]
     }
   ],
   "summary": "Pass 1 complete (4/5 stories PASS, 1 PARTIAL). Passes 2-3 not started."

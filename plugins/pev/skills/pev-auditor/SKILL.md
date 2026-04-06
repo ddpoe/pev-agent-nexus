@@ -43,16 +43,19 @@ cortex_build(project_root="{project_root}")
 cortex_check(project_root="{project_root}", verbose=True)
 ```
 
-This gives you the current staleness state. Every stale node after `cortex_build` is in scope for review.
+This gives you the current staleness state.
 
 ### Step 3: Determine review scope
 
-Your review scope is determined empirically, not from the Architect's predictions.
+Your review scope is determined empirically, not from the Architect's predictions. **Scope is filtered by staleness reason — not every stale node is in scope.**
 
 **Note:** If this is a continuation, nodes you already marked clean in a previous incarnation will NOT appear stale in `cortex_check` — cortex handles this automatically. You only need to review nodes that are still stale.
 
-1. **`cortex_check` results** — the primary signal. Every stale node is in scope.
-2. **Builder's `change-set`** — categorize each finding as:
+1. **Filter `cortex_check` results by staleness reason:**
+   - **CONTENT_UPDATED** — always in scope. The Builder changed this node.
+   - **LINKED_STALE** — always in scope. Cascading staleness from the Builder's changes.
+   - **BROKEN_LINK** — only in scope if the node's file appears in the Builder's `files_changed` list. Otherwise this is a pre-existing issue that predates the cycle. Skip it and note it as `pre-existing` in the Impact Report's `skipped_nodes` field.
+2. **Builder's `change-set`** — categorize each in-scope finding as:
    - `expected` — the stale node is in the Builder's change-set (intentional change)
    - `collateral` — the stale node is NOT in the change-set (indirect effect or external merge)
 3. **Architect's scope boundary** — sanity check only. If the Builder touched something wildly outside the Architect's scope, flag it in the Impact Report.
@@ -86,14 +89,32 @@ If any of these exist for the affected feature area, read and update them:
 
 #### 4b. Staleness Review
 
-For each stale node from `cortex_check`:
+**Triage first:** Before deep-diving into individual nodes, get a high-level view of all changes:
 
-- **Read the diff:** `cortex_diff(node_id=...)` to see what changed
+```
+cortex_diff(project_root="{project_root}", summary_only=True)
+```
+
+This returns a compact summary per node: node_id, change summary, lines added/removed. Use it to plan your review order and identify nodes that are trivially clean (e.g., position shifts only, no logic changes) vs nodes that need careful reading.
+
+For each in-scope stale node from `cortex_check`:
+
+- **Read the diff:** `cortex_diff(node_id=...)` for nodes that need detailed review. Use the summary to plan your batching — you can diff multiple nodes in one call. **Do not diff everything at once.** Check each node's `lines_added` and `lines_removed` from the summary and group nodes into reasonably-sized batches. Skip the full diff entirely for nodes the summary shows are trivial (position-only shifts, zero logic changes).
 - **Read the source:** `cortex_source(node_id=...)` if needed for context
 - **Make a judgment:**
-  - **AGREE** (node is fine) → `cortex_mark_clean(node_id=..., reason="...", verified_by="agent:pev-auditor")` with a brief reason
-  - **DOC NEEDS UPDATE** → `cortex_update_section(...)` to fix the doc, then `cortex_mark_clean`. **Record the change in the change ledger** (see below).
+  - **AGREE** (node is fine) → collect for batch mark_clean (see below)
+  - **DOC NEEDS UPDATE** → `cortex_update_section(...)` to fix the doc, then collect for batch mark_clean. **Record the change in the change ledger** (see below).
   - **CODE NEEDS FIX** → add to `needs_fix` list in Impact Report. Do NOT mark clean.
+
+**Batch mark_clean:** Group nodes by disposition category (e.g., all `expected` code nodes, all `collateral` doc nodes) and mark them clean in a single call per category using `node_ids` (plural). This saves significant tool calls — 26 individual calls become 4-5 batched calls.
+
+```
+cortex_mark_clean(
+  node_ids=["module::path1", "module::path2", "module::path3"],
+  reason="Builder implementation of ADR-005 — code changes match pitch spec",
+  verified_by="agent:pev-auditor"
+)
+```
 
 **Key principle:** Stale ≠ broken. Most stale nodes after a Builder run are fine — changed intentionally. Read the diff, make a judgment, mark clean. Only flag things that are actually wrong.
 
@@ -197,9 +218,17 @@ AUDITOR {status}
     "pev_specific_checks": true,
     "final_verification": true
   },
+  "skipped_nodes": [
+    {
+      "node_id": "cortex::module.function",
+      "reason": "BROKEN_LINK",
+      "note": "Pre-existing broken link — not in Builder's change-set"
+    }
+  ],
   "counts": {
     "nodes_reviewed": 68,
     "nodes_marked_clean": 68,
+    "nodes_skipped": 3,
     "links_added": 0,
     "links_removed": 0,
     "findings_groups": 3,

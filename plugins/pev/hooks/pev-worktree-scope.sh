@@ -1,8 +1,8 @@
 #!/bin/bash
 # pev-worktree-scope.sh — PreToolUse hook for PEV subagents
 # Enforces that Write/Edit calls target only files inside the worktree.
-# Reads worktree_path from .claude/pev-state.json. If pev-state.json
-# is missing or has no worktree_path, the hook is a no-op (allows
+# Reads worktree_path from .pev-state.json. If .pev-state.json is
+# missing or has no worktree_path, the hook is a no-op (allows
 # non-PEV sessions to work without interference).
 
 INPUT=$(cat)
@@ -12,11 +12,11 @@ PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
 if [ -z "$PROJECT_ROOT" ]; then
   PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
   while [ -n "$PROJECT_ROOT" ] && [ "$PROJECT_ROOT" != "/" ]; do
-    [ -f "$PROJECT_ROOT/.claude/pev-state.json" ] && break
+    [ -f "$PROJECT_ROOT/.pev-state.json" ] && break
     PROJECT_ROOT=$(dirname "$PROJECT_ROOT")
   done
 fi
-STATE_FILE="$PROJECT_ROOT/.claude/pev-state.json"
+STATE_FILE="$PROJECT_ROOT/.pev-state.json"
 
 # No state file → not in a PEV cycle → allow everything
 if [ ! -f "$STATE_FILE" ]; then

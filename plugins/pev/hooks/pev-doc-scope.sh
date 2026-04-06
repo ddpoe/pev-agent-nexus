@@ -1,16 +1,32 @@
 #!/bin/bash
 # pev-doc-scope.sh — PreToolUse hook for PEV Architect doc-write tools
 # Enforces that doc-write calls target only the current cycle manifest.
-# Reads cycle_doc_id from .claude/pev-state.json, compares against
+# Reads cycle_doc_id from .pev-state.json, compares against
 # the doc_id (or doc_json.id) in the tool_input. Exit 2 to block.
 
 INPUT=$(cat)
 
+# Resolve project root to find .pev-state.json
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
+if [ -z "$PROJECT_ROOT" ]; then
+  PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
+  while [ -n "$PROJECT_ROOT" ] && [ "$PROJECT_ROOT" != "/" ]; do
+    [ -f "$PROJECT_ROOT/.pev-state.json" ] && break
+    PROJECT_ROOT=$(dirname "$PROJECT_ROOT")
+  done
+fi
+STATE_FILE="$PROJECT_ROOT/.pev-state.json"
+
+# No state file → not in a PEV cycle → allow
+if [ ! -f "$STATE_FILE" ]; then
+  exit 0
+fi
+
 # Read allowed cycle doc ID from orchestrator state file
-CYCLE_DOC_ID=$(jq -r '.cycle_doc_id // ""' .claude/pev-state.json 2>/dev/null)
+CYCLE_DOC_ID=$(jq -r '.cycle_doc_id // ""' "$STATE_FILE" 2>/dev/null)
 
 if [ -z "$CYCLE_DOC_ID" ]; then
-  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"block","permissionDecisionReason":"No cycle_doc_id in .claude/pev-state.json — cannot verify doc scope"}}' >&2
+  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"block","permissionDecisionReason":"No cycle_doc_id in .pev-state.json — cannot verify doc scope"}}' >&2
   exit 2
 fi
 

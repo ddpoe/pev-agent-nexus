@@ -34,13 +34,13 @@ Capture baseline SHA (`git rev-parse HEAD`).
 
 The cycle doc ID is `cortex::docs.pev-cycles.{cycle-id}`. The `cortex` prefix comes from `cortex.toml` (`project_id = "cortex"`), which is a tracked file present in both the main repo and worktrees.
 
-**Write pev-state.json** (see ref: `state-file`) — include `worktree_path`, `cycle_doc_id` (`cortex::docs.pev-cycles.{cycle-id}`), and `counter_file` for the Architect. All subagent hooks read this file.
+**Write `.pev-state.json` to the worktree root** (`pev-worktrees/{cycle-id}/.pev-state.json`) — see ref: `state-file`. Include `worktree_path`, `cycle_doc_id` (`cortex::docs.pev-cycles.{cycle-id}`), and `counter_file` for the Architect. All subagent hooks find this file via walk-up from cwd. Per-worktree state enables parallel PEV cycles.
 
 Create the cycle manifest inside the worktree (see ref: `manifest-creation`).
 
 ### 2. Plan (Architect)
 
-Update pev-state.json counter_file for Architect. Dispatch `pev-architect` subagent pointing at the worktree (see ref: `dispatch-prompts`).
+Update `.pev-state.json` counter_file for Architect. Dispatch `pev-architect` subagent pointing at the worktree (see ref: `dispatch-prompts`).
 
 Handle returns:
 - **NEEDS_INPUT**: If the payload includes a `preamble` field, print it as a text message to the user first. Then relay the Architect's `questions` to the user via AskUserQuestion. Resume with SendMessage containing the answers and the Architect's `context` field.
@@ -60,7 +60,7 @@ Read the cycle manifest. Present the Architect's pitch — scope, user stories, 
 
 **Before dispatching**, read the Architect's pitch from the cycle manifest and inline it into the Builder dispatch prompt (see ref: `builder-context-handoff`). The Builder uses cortex tools to read source on demand from the worktree's cortex DB snapshot.
 
-Update pev-state.json counter_file for Builder. Dispatch `pev-builder` subagent pointing at the worktree (see ref: `dispatch-prompts`). Do NOT use `isolation: "worktree"`.
+Update `.pev-state.json` counter_file for Builder. Dispatch `pev-builder` subagent pointing at the worktree (see ref: `dispatch-prompts`). Do NOT use `isolation: "worktree"`.
 
 Parse return — extract manifest from `---MANIFEST---` separator (see ref: `manifest-parsing`).
 
@@ -74,7 +74,7 @@ Handle status codes:
 
 **Re-index the worktree** before dispatching the Reviewer: run `cortex_build(project_root=worktree_path)` so cortex tools reflect the Builder's changes. Without this, `cortex_check`, `cortex_diff`, and `cortex_source` would return pre-Builder data.
 
-Update pev-state.json counter_file for Reviewer. Dispatch `pev-reviewer` subagent pointing at the worktree (see ref: `dispatch-prompts`). The Reviewer is read-only — it cannot modify code or docs.
+Update `.pev-state.json` counter_file for Reviewer. Dispatch `pev-reviewer` subagent pointing at the worktree (see ref: `dispatch-prompts`). The Reviewer is read-only — it cannot modify code or docs.
 
 The Reviewer performs a three-pass review against the Architect's pitch:
 1. **Spec compliance** — per-user-story pass/fail with evidence
@@ -83,10 +83,20 @@ The Reviewer performs a three-pass review against the Architect's pitch:
 
 Parse return — extract JSON verdict from `---REVIEW---` separator. Write the review findings to the `review` section of the cycle doc.
 
+**Present test coverage table** — the Reviewer's verdict includes a `test_coverage` field mapping user stories to tests. Present it to the user:
+
+```
+| User Story | Test | What It Verifies |
+|------------|------|-------------------|
+| US-1: ... | test_foo_creates_bar | Creates bar and persists to DB |
+| US-1: ... | test_foo_rejects_invalid | Validates input before creation |
+| US-2: ... | (none) | ⚠ No test coverage |
+```
+
 Handle status codes:
-- **PASS**: Write review to cycle doc. Proceed to Phase 6.
-- **PASS_WITH_CONCERNS**: Write review to cycle doc. Present concerns to user. Options: (1) proceed to audit, (2) redispatch Builder to fix concerns, then re-review.
-- **FAIL**: Write review to cycle doc. Present failures to user. Redispatch Builder with the specific failures to fix (same worktree). After fix, re-index the worktree (`cortex_build`), then re-dispatch Reviewer. Max 2 review-fix loops before escalating to user.
+- **PASS**: Write review to cycle doc. Present test coverage table. "Review passed. Test coverage above. Approve to merge, or request Builder to add/change tests?"
+- **PASS_WITH_CONCERNS**: Write review to cycle doc. Present concerns and test coverage table to user. Options: (1) proceed to merge, (2) redispatch Builder to fix concerns or improve test coverage, then re-review.
+- **FAIL**: Write review to cycle doc. Present failures and test coverage table to user. Redispatch Builder with the specific failures to fix (same worktree). After fix, re-index the worktree (`cortex_build`), then re-dispatch Reviewer. Max 2 review-fix loops before escalating to user.
 - **NEEDS_INPUT**: Relay the Reviewer's questions to the user via AskUserQuestion (same proxy-question protocol as the Architect). Resume with SendMessage containing the answers and the Reviewer's `context` field.
 
 ### 6. Merge
@@ -101,13 +111,15 @@ Construct change-set from `git diff {baseline_sha}..HEAD` + Builder manifest. Wr
 
 Merge worktree branch into main, remove worktree/branch (see ref: `merge-commands`). Rebuild cortex on main. Single commit with structured message (see ref: `commit-format`). Capture commit SHA.
 
-**Update pev-state.json** — clear `worktree_path` (set to `null` or remove the key). The Auditor runs on main, not the worktree. Update `counter_file` for Auditor.
+The worktree's `.pev-state.json` was removed with the worktree. The Auditor's state file is handled separately in Phase 7.
 
 ### 7. Audit
 
 The Auditor runs on **main** (not a worktree). The merge has already happened — the Auditor reviews the merged code, updates docs, and marks stale nodes clean on the live codebase.
 
-Check for concurrent `pev-active` cycles in auditor phase (`cortex_list` with tag `pev-active`). Warn if found — only one Auditor should run at a time.
+**Auditor mutex check** (see ref: `auditor-mutex`). Check if `.pev-state.json` exists in the main repo root. If it does, another cycle's Auditor is running — present options to the user (wait, end the other, or skip). **HUMAN GATE** if conflict detected.
+
+When clear, write `.pev-state.json` to the main repo root with `cycle_id`, `cycle_doc_id`, and `counter_file` for the Auditor (no `worktree_path`).
 
 Update status to `auditor` (see ref: `status-updates`). Dispatch `pev-auditor` subagent pointing at the **main repo** (see ref: `dispatch-prompts`).
 
@@ -129,7 +141,7 @@ python scripts/analyze_pev_session.py --find-cycle {cycle-id} --docjson --summar
 ```
 This writes `docs/pev-cycles/{cycle-id}-efficiency.json` and prints a verdict. Present the summary to the user.
 
-Clean up state file. Invoke `superpowers:finishing-a-development-branch`. Do NOT invoke `superpowers:requesting-code-review` — the PEV Reviewer (Phase 5) already covered spec compliance, functionality preservation, and code quality.
+Clean up Auditor state file (`rm -f .pev-state.json` from main repo root). Invoke `superpowers:finishing-a-development-branch`. Do NOT invoke `superpowers:requesting-code-review` — the PEV Reviewer (Phase 5) already covered spec compliance, functionality preservation, and code quality.
 
 ## Error Handling
 

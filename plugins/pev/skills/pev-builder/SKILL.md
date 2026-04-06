@@ -250,7 +250,7 @@ The orchestrator dispatches a fresh Builder incarnation to the **same worktree**
 - **Manifest-only doc writes.** You CAN write to the cycle manifest via `cortex_update_section` and `cortex_add_section` — use this for your build plan, progress, and decisions. You CANNOT write to feature docs, create new docs, add links, or run cortex indexing. The doc-scope hook restricts you to the cycle manifest. The Auditor handles feature doc updates.
 - **Do NOT run `cortex_build` or `cortex_check`.** These modify the cortex index. The orchestrator runs them after merging your worktree.
 - **Do NOT modify files outside the worktree.** All your code edits target the worktree path the orchestrator gave you.
-- **Do NOT edit `.claude/pev-state.json` or any counter files.** These are managed by the orchestrator. The tool budget hooks read them automatically — you do not interact with them.
+- **Do NOT edit `.pev-state.json` or any counter files.** These are managed by the orchestrator. The tool budget hooks read them automatically — you do not interact with them.
 - **The pitch is orientation, not prescription.** The Architect gave you a fat-marker sketch and task list. You read the actual source code and make implementation decisions. If the code suggests a different approach or task ordering, follow the code — and record the deviation.
 - **User stories are acceptance criteria.** When those outcomes work, you're done. Don't gold-plate.
 - **Use `poetry run` for all Python commands.** This project uses Poetry for dependency management.
