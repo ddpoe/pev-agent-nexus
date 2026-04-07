@@ -30,11 +30,11 @@ Proceed? (or suggest a different name)
 
 Capture baseline SHA (`git rev-parse HEAD`).
 
-**Create worktree and set up environment** (see ref: `worktree-commands`): `git worktree add`, `poetry install --no-root` (install deps without the project itself), `cortex_checkout` to copy cortex DB into worktree.
+**Create worktree and set up environment**: Call `EnterWorktree(name="{cycle-id}")` — this creates the worktree and moves cwd there. Then `poetry install --no-root`, `cortex_checkout` to copy cortex DB. See ref: `worktree-commands`.
 
 The cycle doc ID is `cortex::docs.pev-cycles.{cycle-id}`. The `cortex` prefix comes from `cortex.toml` (`project_id = "cortex"`), which is a tracked file present in both the main repo and worktrees.
 
-**Write `.pev-state.json` to the worktree root** (`pev-worktrees/{cycle-id}/.pev-state.json`) — see ref: `state-file`. Include `worktree_path`, `cycle_doc_id` (`cortex::docs.pev-cycles.{cycle-id}`), and `counter_file` for the Architect. All subagent hooks find this file via walk-up from cwd. Per-worktree state enables parallel PEV cycles.
+**Write `.pev-state.json` to the worktree root** (cwd after `EnterWorktree`) — see ref: `state-file`. Include `worktree_path`, `cycle_doc_id` (`cortex::docs.pev-cycles.{cycle-id}`), and `counter_file` for the Architect. Hooks read the `cwd` field from their input and find `.pev-state.json` at that root. Per-worktree state enables parallel PEV cycles.
 
 Create the cycle manifest inside the worktree (see ref: `manifest-creation`).
 
@@ -109,7 +109,7 @@ Construct change-set from `git diff {baseline_sha}..HEAD` + Builder manifest. Wr
 
 - **Rejected**: Discuss options — redispatch Builder with feedback.
 
-Merge worktree branch into main, remove worktree/branch (see ref: `merge-commands`). Rebuild cortex on main. Single commit with structured message (see ref: `commit-format`). Capture commit SHA.
+Safety-net commit: check worktree for uncommitted changes and commit them before merging (see ref: `merge-commands`). Call `ExitWorktree(action="keep")` to return to main repo root. Merge worktree branch into main, remove worktree/branch. Rebuild cortex on main. Single commit with structured message (see ref: `commit-format`). Capture commit SHA.
 
 The worktree's `.pev-state.json` was removed with the worktree. The Auditor's state file is handled separately in Phase 7.
 

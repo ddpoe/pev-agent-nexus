@@ -14,9 +14,9 @@ ls docs/pev-cycles/ 2>/dev/null | grep "^{slug-prefix}"
 ```
 If collision exists, append `-2`, `-3`, etc.
 
-Worktree path: `pev-worktrees/{cycle-id}`
+Worktree path: `.claude/worktrees/{cycle-id}`
 
-Branch name: `pev/{cycle-id}`
+Branch name: `worktree-{cycle-id}`
 
 Cortex doc ID: `cortex::docs.pev-cycles.{cycle-id}` — the project prefix comes from `cortex.toml` (`project_id = "cortex"`), which is a tracked file present in both the main repo and worktrees. All cortex tools use this consistent prefix.
 
@@ -53,7 +53,7 @@ All other sections start with placeholder content — Architect, Builder, and Au
 
 ## State File
 
-Write `.pev-state.json` to the **worktree root** (`pev-worktrees/{cycle-id}/.pev-state.json`) before each subagent dispatch. The doc-scope, cortex-scope, worktree-scope, and tool-budget hooks all find this file via walk-up from the agent's cwd.
+Write `.pev-state.json` to the **worktree root** (the cwd after `EnterWorktree`) before each subagent dispatch. The doc-scope, cortex-scope, worktree-scope, and tool-budget hooks all find this file by reading the `cwd` field from their input and locating `.pev-state.json` at that root.
 
 For the **Auditor phase only** (runs on main after worktree is removed), write `.pev-state.json` to the **main repo root**. This is a serial mutex — check for an existing `.pev-state.json` on main before writing (see Auditor Mutex section).
 
@@ -100,13 +100,14 @@ When clear, write `.pev-state.json` to main repo root with `cycle_id`, `cycle_do
 The orchestrator creates the worktree in Phase 1 (Intake), before any subagent is dispatched. Builder and Reviewer run inside this worktree. Merge happens in Phase 6 (Merge), and the Auditor runs on main in Phase 7.
 
 **Create worktree (Phase 1 — Intake):**
-```bash
-git worktree add -b pev/{cycle-id} pev-worktrees/{cycle-id} HEAD
 ```
+EnterWorktree(name="{cycle-id}")
+```
+Creates `.claude/worktrees/{cycle-id}/` with branch `worktree-{cycle-id}` based on HEAD. Moves session cwd to the worktree.
 
 **Install dependencies (reuse cached packages):**
 ```bash
-poetry install --no-root -C pev-worktrees/{cycle-id}
+poetry install --no-root
 ```
 This creates a new venv for the worktree and installs all deps from the lock file. With a warm pip cache this is fast. The `--no-root` flag skips installing the project package itself (not needed — agents import from local source).
 
@@ -114,8 +115,8 @@ This creates a new venv for the worktree and installs all deps from the lock fil
 
 **Install frontend deps (if package.json exists):**
 ```bash
-if [ -f pev-worktrees/{cycle-id}/cortex/viz/static/ts/package.json ]; then
-  cd pev-worktrees/{cycle-id}/cortex/viz/static/ts && npm install
+if [ -f cortex/viz/static/ts/package.json ]; then
+  cd cortex/viz/static/ts && npm install
 fi
 ```
 
@@ -128,7 +129,7 @@ cortex_checkout(
 ```
 
 `{main_repo_path}` = the main working tree path from `git worktree list`.
-`{worktree_path}` = absolute path to `pev-worktrees/{cycle-id}`.
+`{worktree_path}` = absolute path to `.claude/worktrees/{cycle-id}`.
 
 **Check for stale worktrees:**
 ```bash
@@ -137,19 +138,7 @@ git worktree list
 
 ## Merge Commands
 
-Phase 6 (Merge) — after Review passes. Merge happens before the Auditor runs.
-
-**Merge worktree branch into main:**
-```bash
-git merge --no-commit --no-ff pev/{cycle-id}
-```
-Run from the main repo directory. If conflicts exist, present them to the user and resolve before proceeding.
-
-**Post-merge rebuild:**
-```
-cortex_build(project_root="{main_repo_path}")
-cortex_check(project_root="{main_repo_path}")
-```
+Phase 6 (Merge) — after Review passes. Merge happens before the Auditor runs. See the **Merge Cleanup** section for the full numbered procedure.
 
 **Get changed files for change-set:**
 ```bash
@@ -185,8 +174,8 @@ Cycle manifest doc ID: {cycle_doc_id}
 Project root: {worktree_path}
 
 Your working directory is: {worktree_path}
-Use absolute paths rooted there. Use git -C {worktree_path} for git commands.
-For pytest: cd {worktree_path} && poetry run pytest (cd is required so Python imports worktree code).
+Your cwd is already set to this directory. Use git commands directly (no -C flag needed).
+For pytest: poetry run pytest (cwd is already the worktree, so imports are correct).
 The worktree has a cortex DB snapshot — use {worktree_path} as project_root for all cortex tool calls.
 
 == ARCHITECT PITCH ==
@@ -215,6 +204,9 @@ You are the PEV Builder for cycle {cycle_id} (targeted fix — review iteration 
 Cycle manifest doc ID: {cycle_doc_id}
 Project root: {worktree_path}
 
+Your cwd is already set to this directory. Use git commands directly (no -C flag needed).
+For pytest: poetry run pytest (cwd is already the worktree, so imports are correct).
+
 This is a TARGETED FIX dispatch from the Reviewer. Fix ONLY the following issues identified by the Reviewer:
 {review failures/concerns}
 ```
@@ -225,6 +217,9 @@ You are the PEV Reviewer for cycle {cycle_id}.
 
 Cycle manifest doc ID: {cycle_doc_id}
 Project root: {worktree_path}
+
+Your cwd is already set to this directory. Use git commands directly (no -C flag needed).
+For pytest: poetry run pytest (cwd is already the worktree, so imports are correct).
 
 Review the Builder's code changes against the Architect's pitch. You are read-only.
 
@@ -382,26 +377,41 @@ Capture the commit SHA: `git rev-parse HEAD`
 
 Phase 6 (Merge) — after Review passes and human approves.
 
-1. **Merge worktree into main** (see Merge Commands section):
+1. **Safety-net commit** — ensure the worktree branch has no uncommitted changes before merging (still in worktree — simple git commands, no -C):
 ```bash
-git merge --no-commit --no-ff pev/{cycle-id}
+git status --porcelain
+```
+If output is non-empty, commit the stragglers:
+```bash
+git add -A
+git commit -m "PEV: commit uncommitted changes before merge ({cycle-id})"
 ```
 
-2. **Rebuild cortex on main:**
+2. **Exit worktree** (return to main repo root):
+```
+ExitWorktree(action="keep")
+```
+
+3. **Merge worktree into main** (see Merge Commands section):
+```bash
+git merge --no-commit --no-ff worktree-{cycle-id}
+```
+
+4. **Rebuild cortex on main:**
 ```
 cortex_build(project_root="{main_repo_path}")
 cortex_check(project_root="{main_repo_path}")
 ```
 
-3. **Commit** with structured message (see Commit Format section). This finalizes the merge. Capture commit SHA.
+5. **Commit** with structured message (see Commit Format section). This finalizes the merge. Capture commit SHA.
 
-4. **Remove worktree and branch** (must be after commit — `git branch -d` requires the branch to be merged into HEAD):
+6. **Remove worktree and branch** (must be after commit — `git branch -d` requires the branch to be merged into HEAD):
 ```bash
-git worktree remove pev-worktrees/{cycle-id}
-git branch -d pev/{cycle-id}
+git worktree remove .claude/worktrees/{cycle-id}
+git branch -d worktree-{cycle-id}
 ```
 
-5. **State file cleanup** — the worktree's `.pev-state.json` was removed with the worktree. No action needed here. The Auditor's state file is written separately (see Auditor Mutex section).
+7. **State file cleanup** — the worktree's `.pev-state.json` was removed with the worktree. No action needed here. The Auditor's state file is written separately (see Auditor Mutex section).
 
 ## Completion Cleanup
 

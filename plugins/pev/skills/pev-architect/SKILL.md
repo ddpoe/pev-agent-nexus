@@ -222,14 +222,14 @@ The architect pitch has been written to the cycle manifest. Ready for human revi
 
 **Two budget mechanisms limit your work:**
 
-- **maxTurns (100)** is a hard cutoff on assistant response turns. You will not receive a warning when it approaches — your context window naturally degrades over a long session, and the cutoff exists to preserve the quality of your work rather than letting it degrade. **If you are cut off mid-work, nothing is lost.** The orchestrator automatically treats it as `CONTINUING` — your manifest writes are all preserved. The next incarnation picks up where you left off with a fresh context and full budget. Each NEEDS_INPUT round-trip costs at least 2 turns (your return + the resume). Multiple brainstorming rounds consume turns quickly.
-- **Tool budget hook (gate at 40)** — counts actual tool calls. Advisory warnings at 25 and 35. At 40, only doc-write tools (`cortex_update_section`, `cortex_write_doc`, `cortex_add_section`, `cortex_build`) are allowed — read-only exploration tools are blocked but you can still write to the manifest.
+- **maxTurns** is a hard cutoff on assistant response turns. You will not receive a warning when it approaches — your context window naturally degrades over a long session, and the cutoff exists to preserve the quality of your work rather than letting it degrade. **If you are cut off mid-work, nothing is lost.** The orchestrator automatically treats it as `CONTINUING` — your manifest writes are all preserved. The next incarnation picks up where you left off with a fresh context and full budget. Each NEEDS_INPUT round-trip costs at least 2 turns (your return + the resume). Multiple brainstorming rounds consume turns quickly.
+- **Tool budget hook** — counts actual tool calls. The hook warns you as you approach the limit (the warning message includes your current count and the limit). When the gate activates, only doc-write tools (`cortex_update_section`, `cortex_write_doc`, `cortex_add_section`, `cortex_build`) are allowed — read-only exploration tools are blocked but you can still write to the manifest.
 
 **Returning `CONTINUING` is normal, not a failure.** Sections you've already written to the manifest are preserved — the next incarnation reads them and picks up where you left off.
 
-- **At 25 (warning):** Check your progress — you should be done exploring and into writing sections. If still reading code, tighten your scope.
-- **At 35 (urgent):** Finish your current section write if close. If not, write what you have to the manifest so the next incarnation can continue. Do not start exploring new areas.
-- **At 40 (gate):** Only doc-write tools work. Save your progress and return `CONTINUING`.
+- **Warning:** Check your progress — you should be done exploring and into writing sections. If still reading code, tighten your scope.
+- **Urgent:** Finish your current section write if close. If not, write what you have to the manifest so the next incarnation can continue. Do not start exploring new areas.
+- **Gate:** Only doc-write tools work. Save your progress and return `CONTINUING`.
 
 ### Handling CONTINUING (incomplete work)
 

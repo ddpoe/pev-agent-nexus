@@ -9,15 +9,9 @@
 
 INPUT=$(cat)
 
-# Resolve project root
-PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
-if [ -z "$PROJECT_ROOT" ]; then
-  PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
-  while [ -n "$PROJECT_ROOT" ] && [ "$PROJECT_ROOT" != "/" ]; do
-    [ -f "$PROJECT_ROOT/.pev-state.json" ] && break
-    PROJECT_ROOT=$(dirname "$PROJECT_ROOT")
-  done
-fi
+# Resolve .pev-state.json (lives at cwd root — set by EnterWorktree)
+PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
+[ -z "$PROJECT_ROOT" ] && PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
 STATE_FILE="$PROJECT_ROOT/.pev-state.json"
 
 # No state file → not in a PEV cycle → allow
@@ -48,7 +42,7 @@ fi
 
 # Extract the cd target from the command.
 # Matches: "cd /some/path && ...", "cd /some/path;", "cd /some/path"
-# Does NOT match: "git -C /path" (which is correct usage)
+# Does NOT match: "git -C /path" (not a cd — ignore)
 CD_TARGET=$(echo "$COMMAND" | grep -oP '^\s*cd\s+\K[^\s;&]+' 2>/dev/null)
 
 if [ -z "$CD_TARGET" ]; then
@@ -76,6 +70,6 @@ case "$CD_TARGET" in
     exit 0
     ;;
   *)
-    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: 'cd ${CD_TARGET}' is outside the worktree '${WORKTREE_PATH}'. You must run all commands from the worktree directory. Use: cd ${WORKTREE_PATH} && ... For git commands, use: git -C ${WORKTREE_PATH} ...\"}}"
+    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: 'cd ${CD_TARGET}' is outside the worktree '${WORKTREE_PATH}'. Your cwd is already the worktree — run commands directly without cd.\"}}"
     ;;
 esac
