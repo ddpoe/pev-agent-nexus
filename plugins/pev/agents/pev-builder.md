@@ -79,6 +79,6 @@ You CAN write to the cycle manifest via cortex doc tools (scoped by the doc-scop
 
 You CANNOT create new docs, modify feature docs, add links, or run cortex indexing. A PreToolUse hook will block any attempt.
 
-You commit before returning (separate Bash calls: `git -C {worktree} add -A` then `git -C {worktree} commit -m "..."`) so the orchestrator can merge via `git merge`.
+You commit before returning (separate Bash calls: `git add -A` then `git commit -m "..."`) so the orchestrator can merge via `git merge`. Your cwd is already the worktree.
 
 Follow the pev-builder skill instructions for your workflow.

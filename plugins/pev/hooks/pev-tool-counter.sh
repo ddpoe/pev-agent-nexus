@@ -15,17 +15,9 @@ WARN=${1:-3}
 URGENT=${2:-6}
 LIMIT=${3:-10}
 
-# Counter file from .pev-state.json
-# Resolve project root: prefer CLAUDE_PROJECT_DIR, then parse cwd from stdin input
-PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
-if [ -z "$PROJECT_ROOT" ]; then
-  PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
-  # Walk up from cwd to find .pev-state.json (handles worktree cwd)
-  while [ -n "$PROJECT_ROOT" ] && [ "$PROJECT_ROOT" != "/" ]; do
-    [ -f "$PROJECT_ROOT/.pev-state.json" ] && break
-    PROJECT_ROOT=$(dirname "$PROJECT_ROOT")
-  done
-fi
+# Counter file from .pev-state.json (lives at cwd root — set by EnterWorktree)
+PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
+[ -z "$PROJECT_ROOT" ] && PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
 STATE_FILE="$PROJECT_ROOT/.pev-state.json"
 if [ -f "$STATE_FILE" ]; then
   PEV_TOOL_COUNTER=$(jq -r '.counter_file // empty' "$STATE_FILE" 2>/dev/null)

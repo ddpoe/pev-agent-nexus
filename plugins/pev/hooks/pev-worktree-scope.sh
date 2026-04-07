@@ -7,15 +7,9 @@
 
 INPUT=$(cat)
 
-# Resolve project root: prefer CLAUDE_PROJECT_DIR, then parse cwd
-PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
-if [ -z "$PROJECT_ROOT" ]; then
-  PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
-  while [ -n "$PROJECT_ROOT" ] && [ "$PROJECT_ROOT" != "/" ]; do
-    [ -f "$PROJECT_ROOT/.pev-state.json" ] && break
-    PROJECT_ROOT=$(dirname "$PROJECT_ROOT")
-  done
-fi
+# Resolve .pev-state.json (lives at cwd root — set by EnterWorktree)
+PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
+[ -z "$PROJECT_ROOT" ] && PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
 STATE_FILE="$PROJECT_ROOT/.pev-state.json"
 
 # No state file → not in a PEV cycle → allow everything
