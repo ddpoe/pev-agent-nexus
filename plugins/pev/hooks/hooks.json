@@ -6,6 +6,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "echo {\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"SIMPLE-HOOK-FIRED\"}}"
+          },
+          {
+            "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pev-cwd-test.sh",
             "timeout": 5
           }
