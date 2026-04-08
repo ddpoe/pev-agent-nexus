@@ -1,3 +1,5 @@
 #!/bin/bash
-# Temporary test: dump raw hook input to inspect cwd field
-cat > /tmp/pev-cwd-test.json
+# Temporary test: output a visible message so the agent sees the hook fired
+INPUT=$(cat)
+CWD=$(echo "$INPUT" | jq -r '.cwd // "UNKNOWN"' 2>/dev/null)
+echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"PEV-CWD-TEST HOOK FIRED. cwd=${CWD}\"}}"

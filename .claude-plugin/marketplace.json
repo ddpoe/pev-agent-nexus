@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "PEV agent system — Plan-Execute-Validate workflow for structured code changes",
-    "version": "1.6.3"
+    "version": "1.6.4"
   },
   "plugins": [
     {
       "name": "pev",
       "source": "./plugins/pev",
       "description": "PEV (Plan-Execute-Validate) agent workflow with cortex integration",
-      "version": "1.6.3",
+      "version": "1.6.4",
       "author": {
         "name": "ddpoe"
       },
