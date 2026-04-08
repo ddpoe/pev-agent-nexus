@@ -1,17 +1,23 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo PEV-SESSION-START-FIRED"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "echo {\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"SIMPLE-HOOK-FIRED\"}}"
-          },
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pev-cwd-test.sh",
-            "timeout": 5
+            "command": "echo {\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"PEV-POST-TOOL-FIRED\"}}"
           }
         ]
       }
