@@ -62,30 +62,58 @@ Your review scope is determined empirically, not from the Architect's prediction
 
 ### Step 4: Review stale nodes
 
-Follow the Auditor Reference Protocol (`${CLAUDE_PLUGIN_ROOT}/templates/auditor-reference-protocol.md`) for the full checklist. (`${CLAUDE_PLUGIN_ROOT}` is the plugin's install directory — set by Claude Code automatically.) The key sections in order:
+Follow the Auditor Reference Protocol (`${CLAUDE_PROJECT_DIR}/.claude/templates/auditor-reference-protocol.md`) for the full checklist. (`${CLAUDE_PROJECT_DIR}/.claude` is the plugin's install directory — set by Claude Code automatically.) The key sections in order:
 
 #### 4a. Post-Implementation Updates
 
-Before the staleness review, perform targeted doc updates. **Start by discovering which feature docs exist for the affected modules.**
+Before the staleness review, perform targeted doc updates and identify doc gaps. **Start by discovering which feature docs exist for the affected modules.**
 
-**Discovery step:** From the Builder's change-set, identify which feature areas were touched (e.g., changes to `cortex/index/db.py` affect the indexer feature, changes to `cortex/mcp_server.py` affect the MCP server feature). Then search for adjacent docs:
+**Discovery step:** From the Builder's change-set, identify which feature areas were touched (e.g., changes to `cortex/index/db.py` affect the indexer feature, changes to `cortex/mcp_server.py` affect the MCP server feature). Then walk the feature doc tree:
 
 ```
-cortex_search(query="features {feature-area}", node_type="doc")
 cortex_list(location="docs/features/")
+cortex_search(query="features {feature-area}", node_type="doc")
 ```
 
-Look for these doc types in the feature tree:
-- `prd.json` — PRD with capabilities table
-- `design.json` — design spec with architecture, decision log
-- `interfaces/*.json` — interface specs (data model, CLI, tools)
+The feature doc hierarchy follows this structure:
 
-If any of these exist for the affected feature area, read and update them:
+```
+docs/features/{feature}/
+    prd.json                    ← Feature PRD (problem, user-stories, requirements, non-goals, icebox)
+    design.json                 ← Design spec (architecture, data-model, decisions)
+    user-guide.json             ← User guide
+    interfaces/
+        cli.json                ← CLI commands, flags, options
+        data-model.json         ← DB schema, tables, columns
+        {other}.json            ← Other interface specs as needed
+    sub_features/{sub-feature}/
+        prd.json                ← Sub-feature PRD (problem, user-stories, current-capabilities, backlog)
+        design.json             ← Sub-feature design spec
+```
 
-1. **Sub-feature PRD capabilities table** — update status to Done for completed outcomes (match against Builder's change-set and Architect's user stories)
-2. **Interface specs** — add new parameters, tables, endpoints, or commands. Remove deprecated ones. **This is critical for schema changes** — if the Builder added new DB tables, virtual tables, or modified existing schemas, the data model interface doc MUST be updated. If MCP tools gained new parameters, the tools interface doc MUST be updated.
-3. **Design spec** — update architecture/decisions if the implementation changed the system structure (if applicable)
+For each affected feature area, check what exists and what's missing. Then:
+
+**Update existing docs:**
+
+1. **Sub-feature PRD capabilities table** (`current-capabilities` section) — update status to Done for completed outcomes (match against Builder's change-set and Architect's user stories). Also check the `backlog` section — if a backlog item was implemented, remove it from backlog and ensure it's in capabilities as Done.
+2. **Interface specs** — add new parameters, tables, endpoints, or commands. Remove deprecated ones. **Critical triggers:** Builder added/modified DB tables or columns → update `data-model.json`. Builder added/modified CLI commands or flags → update `cli.json`. Builder added/modified tool parameters or return types → update the relevant interface spec.
+3. **Design spec** — update architecture/decisions if the implementation changed the system structure. Add a decision log entry if the Builder made a significant trade-off.
 4. **Doc-to-code links** — add links for new public entry points using `cortex_add_link`. Decision test: if a developer rewrites the linked function, would this section need review? If yes, link it.
+
+**Create missing docs:**
+
+If the Builder's work created a new subsystem or feature area that has no corresponding docs, create them from templates. Templates are at `docs/templates/`:
+
+| Gap identified | Template to use | Path |
+|---|---|---|
+| New sub-feature, no PRD | `docs/templates/sub_feature_template/sub_feature_prd_template.json` | `docs/features/{feature}/sub_features/{new-sub}/prd.json` |
+| New sub-feature, no design spec | `docs/templates/feature_template/design_spec_template.json` | `docs/features/{feature}/sub_features/{new-sub}/design.json` |
+| New feature area, no PRD | `docs/templates/feature_template/product_review_document_template.json` | `docs/features/{new-feature}/prd.json` |
+| New interface type, no spec | Create from the pattern of existing interface specs in that feature | `docs/features/{feature}/interfaces/{type}.json` |
+
+To create a doc: read the template, populate sections from the Builder's manifest (problem from the Architect's pitch, user stories from the Architect, capabilities from what the Builder built), and write with `cortex_write_doc`. Record in the change ledger with category `new_doc`.
+
+If you're unsure whether something is a new feature vs a sub-feature of an existing one, infer from the directory structure — if the changed code lives under a module that already has a feature doc, it's a sub-feature. Use NEEDS_INPUT only for genuine ambiguity that can't be resolved from context.
 
 #### 4b. Staleness Review
 
@@ -123,7 +151,7 @@ cortex_mark_clean(
 ```
 cortex_update_section(
   section_id="{cycle_doc_id}::auditor.change-ledger",
-  content="{existing entries}\n\n- **{section_id}** ({action})\n  Reason: {why this update was needed}\n  Trigger: {code node whose change caused this}\n  Category: {interface_spec|prd_capability|design_decision|link_maintenance|new_coverage}\n  Verify: `cortex_diff(node_id='{section_id}')`"
+  content="{existing entries}\n\n- **{section_id}** ({action})\n  Reason: {why this update was needed}\n  Trigger: {code node whose change caused this}\n  Category: {interface_spec|prd_capability|design_decision|link_maintenance|new_coverage|new_doc}\n  Verify: `cortex_diff(node_id='{section_id}')`"
 )
 ```
 
@@ -140,14 +168,6 @@ Run these in order after the staleness review:
 3. **Orphan links** — `cortex_graph(section_id, direction="out")` for doc sections with links. Remove links pointing to nonexistent node IDs.
 4. **Composite coverage** — `cortex_list(parent_id=module_id)` to check children link coverage. Flag modules where <50% of public children have `documents` edges.
 5. **Link fan-out** — flag doc sections with >8 outbound `documents` edges. Split or remove orientation-only links.
-
-#### 4d. PEV-Specific Checks
-
-These are judgment calls, not mechanical greps:
-
-6. **Logging audit (ADR-014)** — for each modified code node, read source and judge: tool entry/exit timing, phase milestones, exception handler visibility, subprocess timeouts. Findings use category `logging`.
-7. **Test annotation audit** — tier verification (Tier 1/2/3 correct?), budget check (5-10 per subsystem, flag >15), gap detection via `cortex_graph(direction="in")` for `validates` edges. Findings use category `test_budget`.
-8. **Workflow step markers** — `cortex_workflow_list`, then for key multi-step functions: `cortex_render(node_id, level=3)` + `cortex_source`. Flag missing/ghost/wrong markers. Findings use category `workflow_markers`.
 
 ### Step 5: Final verification
 
@@ -197,7 +217,7 @@ AUDITOR {status}
   "needs_fix": [
     {
       "node_id": "cortex::module.function",
-      "category": "code_bug|needs_new_tests|logging|workflow_markers",
+      "category": "code_bug|needs_new_tests",
       "description": "What needs fixing",
       "severity": "must_fix|should_fix"
     }
@@ -215,7 +235,6 @@ AUDITOR {status}
   "checks_completed": {
     "staleness_review": true,
     "automated_checks": true,
-    "pev_specific_checks": true,
     "final_verification": true
   },
   "skipped_nodes": [
@@ -242,21 +261,21 @@ AUDITOR {status}
 
 | Status | Meaning | When to use |
 |---|---|---|
-| `DONE` | **All steps completed** — staleness review (4b), automated checks (4c), PEV-specific checks (4d), and final verification (Step 5) | Happy path — every step in the workflow finished |
+| `DONE` | **All steps completed** — staleness review (4b), automated checks (4c), and final verification (Step 5) | Happy path — every step in the workflow finished |
 | `DONE_WITH_CONCERNS` | All steps completed but with `needs_fix` items | Code issues found that the Auditor cannot fix (no code-write tools). The orchestrator presents these to the user for follow-up. |
 | `CONTINUING` | Any step incomplete, need another incarnation | Tool budget running low, maxTurns approaching, or too many nodes to review in one pass. **This is the default for any incomplete work.** |
 | `NEEDS_INPUT` | Need user judgment to proceed | Ambiguous doc placement, unclear whether a change matches user intent, feature doc ownership questions |
 
-**Critical distinction:** `DONE` means all 4 sub-steps of Step 4 (4a, 4b, 4c, 4d) AND Step 5 are finished. If you completed the staleness review (4b) but haven't run the automated checks (4c) or PEV-specific checks (4d), you are NOT done — return `CONTINUING`. The orchestrator will redispatch you and already-marked-clean nodes won't reappear as stale.
+**Critical distinction:** `DONE` means all 3 sub-steps of Step 4 (4a, 4b, 4c) AND Step 5 are finished. If you completed the staleness review (4b) but haven't run the automated checks (4c), you are NOT done — return `CONTINUING`. The orchestrator will redispatch you and already-marked-clean nodes won't reappear as stale.
 
 ### Handling CONTINUING (incomplete work)
 
 Return `CONTINUING` whenever you cannot complete all steps in this incarnation. Common reasons:
 - **Tool budget** — approaching the maxTurns limit or tool gate threshold
 - **Large review scope** — too many stale nodes to review in one pass
-- **Steps remaining** — staleness review done but automated checks (4c) or PEV-specific checks (4d) not started yet
+- **Steps remaining** — staleness review done but automated checks (4c) not started yet
 
-Do NOT return `DONE` just because you finished the staleness review. That's only Step 4b — there are still automated checks (4c), PEV-specific checks (4d), and final verification (Step 5) to complete.
+Do NOT return `DONE` just because you finished the staleness review. That's only Step 4b — there are still automated checks (4c) and final verification (Step 5) to complete.
 
 If you are running low on tool calls (approaching the maxTurns limit set by the orchestrator), or if you realize you cannot complete all reviews in this incarnation:
 
@@ -315,7 +334,7 @@ The orchestrator relays your questions to the user and resumes you with the answ
 - **Do NOT commit.** No git operations.
 - **Stale ≠ broken.** Most stale nodes are fine — changed intentionally. Read the diff, make a judgment. Only flag things that are actually wrong.
 - **`cortex_mark_clean` is the single clean action.** It both records the AGENT_VERIFIED judgment and clears the CONTENT_STALE marker. There is no separate tag removal step for individual nodes — `mark_clean` handles both.
-- **Follow the Auditor Reference Protocol** (`${CLAUDE_PLUGIN_ROOT}/templates/auditor-reference-protocol.md`) for the full checklist. The protocol sections are ordered — follow them in order.
+- **Follow the Auditor Reference Protocol** (`${CLAUDE_PROJECT_DIR}/.claude/templates/auditor-reference-protocol.md`) for the full checklist. The protocol sections are ordered — follow them in order.
 - **Use `verified_by="agent:pev-auditor"` in `cortex_mark_clean` calls** for traceability.
 - **Record every doc change in the change ledger.** Every `cortex_update_section` call that modifies a doc must have a corresponding entry in `auditor.change-ledger` with reason, trigger node, category, and diff command. This is the Auditor's accountability artifact.
 - **Record judgment calls as decisions.** When you make non-obvious audit judgments (e.g., "marked clean despite drift because logic is identical"), append to the cycle-wide `decisions` section: `### D-{N} (Auditor): {title}\n**Phase:** audit\n**Choice:** {judgment}\n**Reason:** {why}`
