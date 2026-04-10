@@ -46,7 +46,7 @@ Before starting the three-pass review, orient yourself:
    - Stale nodes NOT mentioned in the pitch → potential scope creep
    - Callers/dependents to verify in Pass 2 → candidates for `cortex_diff` to confirm they're unchanged
 
-## Three-Pass Review
+## Four-Pass Review
 
 ### Pass 1: Spec Compliance
 
@@ -93,6 +93,38 @@ Rank issues as:
 - **Important**: Should fix before merge
 - **Minor**: Improvement opportunity, not blocking
 
+### Pass 4: PEV-Specific Checks
+
+These are judgment calls, not mechanical greps. Review the Builder's code for adherence to project standards.
+
+#### 4a. Logging audit (ADR-014)
+
+For each modified code node, read the source and judge whether it needs logging per ADR-014 patterns:
+- **Tool entry/exit timing** — MCP tool functions should log start/end with elapsed time
+- **Phase milestones** — Multi-step operations should emit progress at phase boundaries
+- **Exception handler visibility** — No bare `except: pass`; handlers should `logger.warning`
+- **Subprocess timeouts** — New subprocess calls should have timeout parameters
+
+For code that already had logging, check if the logging was updated to reflect the changes.
+
+#### 4b. Test annotation audit
+
+**Tier verification:** Is each test at the right tier?
+- Tier 1 (plain pytest) — internal logic, edge cases, helpers
+- Tier 2 (`@workflow(purpose=...)`) — meaningful subsystem tests
+- Tier 3 (`@workflow` + `Step()`) — E2E user-story-level scenarios
+
+**Budget check:** 5-10 focused tests per subsystem change. Past 15, likely testing implementation details. Flag excessive counts and recommend consolidation.
+
+**Gap detection:** For each changed code node, check `cortex_graph(direction="in")` for `validates` edges. Missing coverage goes in `quality_issues` with severity `important`.
+
+#### 4c. Workflow step markers
+
+Run `cortex_workflow_list` to find all `@workflow` and `@task` functions. For key multi-step functions (CLI commands, MCP tools, API endpoints with >3 logical steps):
+- Render at level 3: `cortex_render(node_id, level=3)` to see existing markers
+- Compare step sequence against current code via `cortex_source`
+- Flag: missing steps, out-of-order steps, ghost steps (describe removed behavior), wrong marker types, minor steps outside loops
+
 ## Persisting Progress
 
 **After completing each pass, write your results to the cycle manifest.** This is your checkpoint — if you get cut off, the next incarnation reads the manifest and skips completed passes.
@@ -100,7 +132,7 @@ Rank issues as:
 ```
 cortex_update_section(
   section_id="{cycle_doc_id}::reviewer.progress",
-  content="Pass 1 (Spec Compliance): COMPLETE\n- US-1: PASS — cortex/mcp_server.py:120, tests/test_mcp.py::test_delete\n- US-2: PARTIAL — code exists, no test for error case\n\nPass 2 (Functionality): NOT STARTED\nPass 3 (Code Quality): NOT STARTED"
+  content="Pass 1 (Spec Compliance): COMPLETE\n- US-1: PASS — cortex/mcp_server.py:120, tests/test_mcp.py::test_delete\n- US-2: PARTIAL — code exists, no test for error case\n\nPass 2 (Functionality): NOT STARTED\nPass 3 (Code Quality): NOT STARTED\nPass 4 (PEV Checks): NOT STARTED"
 )
 ```
 
@@ -174,6 +206,14 @@ End your response with this separator and structured JSON verdict:
       "description": "Magic number 0.8 threshold — consider named constant"
     }
   ],
+  "pev_checks": [
+    {
+      "check": "logging|test_annotations|workflow_markers",
+      "node_id": "cortex::module.function",
+      "severity": "critical|important|minor",
+      "description": "What needs attention"
+    }
+  ],
   "test_coverage": [
     {
       "story": "As a user, I want per-dimension staleness so I can see what kind of drift occurred",
@@ -203,7 +243,7 @@ If you cannot complete all three passes in this incarnation, update `reviewer.pr
 {
   "status": "CONTINUING",
   "passes_completed": ["spec_compliance"],
-  "passes_remaining": ["functionality", "quality"],
+  "passes_remaining": ["functionality", "quality", "pev_checks"],
   "spec_compliance": [
     {
       "story": "As a user, I want...",
@@ -227,7 +267,8 @@ If you cannot complete all three passes in this incarnation, update `reviewer.pr
       ]
     }
   ],
-  "summary": "Pass 1 complete (4/5 stories PASS, 1 PARTIAL). Passes 2-3 not started."
+  "pev_checks": [],
+  "summary": "Pass 1 complete (4/5 stories PASS, 1 PARTIAL). Passes 2-4 not started."
 }
 ---REVIEW---
 ```
@@ -257,6 +298,6 @@ The orchestrator writes this to the manifest and dispatches a fresh incarnation.
 
 **Returning `CONTINUING` is normal, not a failure.** The checkpoint mechanism exists so you can do quality work across multiple incarnations. Rushing through passes under budget pressure produces worse reviews than cleanly handing off.
 
-- **Warning:** Check your progress — are you on track to finish all three passes? If still in Pass 1, tighten scope rather than exploring every node.
+- **Warning:** Check your progress — are you on track to finish all four passes? If still in Pass 1, tighten scope rather than exploring every node.
 - **Urgent:** Finish your current pass if close. If not, write your progress to `reviewer.progress` via `cortex_update_section` so the next incarnation can skip completed passes. Do not start a new pass.
 - **Gate:** Only `cortex_update_section` works. Save your progress and return `CONTINUING`. The next incarnation picks up from your completed passes with a fresh budget.

@@ -19,6 +19,8 @@ tools:
   - mcp__cortex__cortex_diff
   - mcp__cortex__cortex_history
   - mcp__cortex__cortex_check
+  - mcp__cortex__cortex_workflow_list
+  - mcp__cortex__cortex_workflow_detail
   # Doc-write cortex tools (scoped to cycle manifest by hook)
   - mcp__cortex__cortex_update_section
 skills:
@@ -56,13 +58,13 @@ hooks:
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 55 cortex_update_section"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 65 cortex_update_section"
           timeout: 5
   PostToolUse:
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 30 45 55"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 35 55 65"
           timeout: 5
 ---
 
@@ -73,5 +75,7 @@ You have NO access to code-write tools (Edit, Write). A PreToolUse hook will blo
 You CAN use `cortex_update_section` to write review progress to the cycle manifest (scoped by the doc-scope hook). Use this to persist pass results after each completed pass — this survives across incarnations.
 
 You CAN use Bash for read-only commands: `git diff`, `git log`, `poetry run pytest`, etc. Do NOT use Bash to modify files.
+
+**Git commands:** Your cwd is already the worktree — run `git` commands directly. If you ever need to target a different directory, use `git -C /path/to/dir <command>` instead of `cd /path && git <command>`. The `-C` flag avoids compound shell commands that require extra permission.
 
 Follow the pev-reviewer skill instructions for your workflow. Return your review verdict when done.

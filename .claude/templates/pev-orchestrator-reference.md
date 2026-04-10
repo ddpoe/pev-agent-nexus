@@ -69,7 +69,7 @@ Format:
 
 - `cycle_doc_id`: the full cortex doc ID for the cycle manifest: `cortex::docs.pev-cycles.{cycle-id}`. The `cortex` prefix comes from `cortex.toml` (`project_id`). All dispatch prompts and hooks use this value.
 - `worktree_path`: absolute path to the worktree created in Phase 1. Builder and Reviewer receive this — hooks use it to scope Write/Edit, Bash, and cortex `project_root` calls. Not used for Auditor (runs on main).
-- `{agent}`: `architect`, `builder`, `reviewer`, or `auditor`
+- `{agent}`: `architect`, `builder`, `reviewer`, `auditor`, or `doc-reviewer`
 - `{incarnation}`: starts at 1, increments per re-dispatch
 - A fresh counter_file path (file doesn't exist yet) starts at 0 automatically — no explicit reset needed
 - Use the Write tool to create this file
@@ -135,6 +135,10 @@ cortex_checkout(
 ```bash
 git worktree list
 ```
+
+## Git Command Convention
+
+**Always use `git -C <path>` instead of `cd <path> && git ...`** when targeting a directory other than cwd. The `-C` flag is a single command that doesn't require compound shell permission. When cwd is already the target, plain `git` is fine.
 
 ## Merge Commands
 
@@ -258,7 +262,37 @@ Return your Impact Report when done.
 **Auditor (continuation):**
 Add: `CONTINUATION: A previous Auditor incarnation was dispatched and returned CONTINUING. Already-marked-clean nodes will not appear stale on cortex_check. Previous Auditor checkpoint: {checkpoint}`
 
-**All dispatches use:** `subagent_type="pev-{agent}"`. Do NOT use `isolation: "worktree"` — the orchestrator owns the worktree lifecycle.
+**Doc Reviewer (initial):**
+```
+You are the PEV Doc Reviewer for cycle {cycle_id}.
+
+Cycle manifest doc ID: {cycle_doc_id}
+Project root: {main_repo_path}
+
+The Auditor has completed its documentation updates on the live codebase (main). Review the Auditor's doc changes against templates and the actual implementation.
+
+Read the cycle manifest for context: Architect pitch (what was requested), Builder manifest (what was built), Auditor change ledger (what docs were changed), and Auditor impact report (audit summary).
+
+Use cortex tools to verify doc content matches the code. Follow your skill instructions. Return your review verdict when done.
+```
+
+**Doc Reviewer (re-review after Auditor fix):**
+Add: `RE-REVIEW: The Auditor has addressed the following doc issues from your previous review. Verify the fixes and re-evaluate: {previous failures}`
+
+**Auditor (doc fix — doc review loopback):**
+```
+You are the PEV Auditor for cycle {cycle_id} (targeted doc fix — doc review iteration {N}).
+
+Cycle manifest doc ID: {cycle_doc_id}
+Project root: {main_repo_path}
+
+This is a TARGETED DOC FIX dispatch from the Doc Reviewer. Fix ONLY the following documentation issues:
+{doc review failures}
+
+Your previous change ledger and marked-clean nodes are preserved. Focus on the specific doc issues identified.
+```
+
+**All dispatches use:** `subagent_type="pev-{agent}"` (agents: `architect`, `builder`, `reviewer`, `auditor`, `doc-reviewer`). Do NOT use `isolation: "worktree"` — the orchestrator owns the worktree lifecycle.
 
 ## Builder Context Handoff
 
@@ -308,8 +342,11 @@ Also add: `Commit SHA: {commit_sha}`
 **Merge → Auditor:**
 Add: `- auditor: {now-timestamp} — merged as {commit_sha}, auditing on main`
 
-**Auditor → Completed:**
-Add: `- completed: {now-timestamp} — audit complete`
+**Auditor → Doc Review:**
+Add: `- doc-review: {now-timestamp} — audit complete, reviewing docs`
+
+**Doc Review → Completed:**
+Add: `- completed: {now-timestamp} — doc review passed`
 Also add: `Completed: {now-timestamp}`
 
 **Failure at any point:**
@@ -328,6 +365,14 @@ cortex_update_section(
 ```
 
 **Auditor returns:** Look for `---IMPACT-REPORT---` separator. Everything after it is the JSON impact report.
+
+**Doc Reviewer returns:** Look for `---DOC-REVIEW---` separator. Everything after it is JSON review findings. Write to the `doc-review` section:
+```
+cortex_update_section(
+  section_id="{cycle_doc_id}::doc-review",
+  content="{formatted doc review findings}"
+)
+```
 
 **Auditor change ledger:** The Auditor writes change_ledger entries to `auditor.change-ledger` as it works (not just at return). Write the final impact-report to `auditor.impact-report`.
 
@@ -377,7 +422,7 @@ Capture the commit SHA: `git rev-parse HEAD`
 
 Phase 6 (Merge) — after Review passes and human approves.
 
-1. **Safety-net commit** — ensure the worktree branch has no uncommitted changes before merging (still in worktree — simple git commands, no -C):
+1. **Safety-net commit** — ensure the worktree branch has no uncommitted changes before merging. If cwd is the worktree, use plain `git`. If cwd is elsewhere, use `git -C {worktree_path}`:
 ```bash
 git status --porcelain
 ```
