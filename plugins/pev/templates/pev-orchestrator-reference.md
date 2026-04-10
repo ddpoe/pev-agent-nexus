@@ -239,17 +239,18 @@ Project root: {worktree_path}
 Your cwd is already set to this directory. Use git commands directly (no -C flag needed).
 For pytest: poetry run pytest (cwd is already the worktree, so imports are correct).
 
-Review the Builder's code changes against the Architect's pitch. You are read-only.
+Review the Builder's code changes against the Architect's pitch AND the pitch's source documents. You are read-only. Your default stance is skeptical.
 
-The Architect's pitch is in the cycle manifest (sections: user-stories, solution-sketch, constraints, affected-nodes).
-The Builder's build plan and progress are in the cycle manifest. Read builder.build-plan, builder.progress, and the decisions section for context. Also check architect.required-artifacts against the Builder's output.
+**Read the pitch FIRST** (sections: problem, user-stories, solution-sketch, constraints, source-documents, required-artifacts). Form expectations before reading the Builder's notes.
+
+Then read the Builder's context: builder.build-plan, builder.progress, and the decisions section. Note tensions between Builder claims and Architect expectations.
 
 Files changed by the Builder:
 {git diff --stat output from worktree branch vs baseline}
 
 Use cortex tools (cortex_diff, cortex_source, cortex_graph) to review the actual code changes on demand.
 
-Include a test_coverage table in your review: for each user story, list which tests cover it, what each test verifies, and any gaps.
+Run the test suite first (Pass 0). Cross-check source documents (Pass 1). Then reverse-map every code change to a user story or deviation (Pass 2). Include test_coverage, reverse_mapping, and deviation_tribunal in your verdict.
 
 Follow your skill instructions. Return your review verdict when done.
 ```
@@ -307,6 +308,34 @@ Your previous change ledger and marked-clean nodes are preserved. Focus on the s
 ```
 
 **All dispatches use:** `subagent_type="pev-{agent}"` (agents: `architect`, `builder`, `reviewer`, `auditor`, `doc-reviewer`). Do NOT use `isolation: "worktree"` — the orchestrator owns the worktree lifecycle.
+
+## Handling Architect doc_edits
+
+When the Architect's NEEDS_INPUT payload includes `doc_edits`, process them before (or alongside) questions:
+
+1. Print the Architect's preamble (if any)
+2. For each doc_edit entry:
+   ```
+   The Architect proposes updating {doc_id}:
+   Section: {section_id}
+   Reason: {reason}
+   Currently: {current_summary}
+   Proposed: {proposed_content}
+   ```
+   Present via AskUserQuestion: "Approve this source doc edit?" with options: Approve / Reject / Reject with note.
+3. Apply approved edits:
+   ```
+   cortex_update_section(
+     section_id="{section_id}",
+     content="{proposed_content}"
+   )
+   ```
+4. Collect results into `doc_edit_results` array
+5. Process questions (if any) via AskUserQuestion
+6. Resume Architect with SendMessage:
+   ```json
+   {"answers": {"question text": "selected label"}, "doc_edit_results": [{"section_id": "...", "status": "applied|rejected", "user_note": "..."}], "context": "...architect's context field verbatim..."}
+   ```
 
 ## Builder Context Handoff
 

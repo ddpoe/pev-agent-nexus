@@ -23,7 +23,17 @@ if [ -z "$WORKTREE_PATH" ]; then
   exit 0
 fi
 
+# Normalize to POSIX format (Windows paths: C:/... → /c/...)
+normalize() {
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -u "$1"
+  else
+    echo "$1"
+  fi
+}
+
 # Resolve worktree to absolute canonical path
+WORKTREE_PATH=$(normalize "$WORKTREE_PATH")
 WORKTREE_PATH=$(cd "$WORKTREE_PATH" 2>/dev/null && pwd -P)
 if [ -z "$WORKTREE_PATH" ]; then
   echo "BLOCKED: worktree_path in pev-state.json does not exist on disk" >&2
@@ -40,6 +50,7 @@ if [ -z "$TOOL_PROJECT_ROOT" ]; then
 fi
 
 # Resolve to absolute canonical path
+TOOL_PROJECT_ROOT=$(normalize "$TOOL_PROJECT_ROOT")
 if [ -d "$TOOL_PROJECT_ROOT" ]; then
   TOOL_PROJECT_ROOT=$(cd "$TOOL_PROJECT_ROOT" && pwd -P)
 else

@@ -27,7 +27,17 @@ if [ -z "$WORKTREE_PATH" ]; then
   exit 0
 fi
 
+# Normalize to POSIX format (Windows paths: C:/... → /c/...)
+normalize() {
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -u "$1"
+  else
+    echo "$1"
+  fi
+}
+
 # Resolve worktree to absolute path
+WORKTREE_PATH=$(normalize "$WORKTREE_PATH")
 WORKTREE_PATH=$(cd "$WORKTREE_PATH" 2>/dev/null && pwd -P)
 if [ -z "$WORKTREE_PATH" ]; then
   exit 0
@@ -50,10 +60,11 @@ if [ -z "$CD_TARGET" ]; then
   exit 0
 fi
 
-# Resolve cd target to absolute path
+# Normalize and resolve cd target to absolute path
+CD_TARGET=$(normalize "$CD_TARGET")
 case "$CD_TARGET" in
   /*) ;; # already absolute
-  *)  CD_TARGET="$(echo "$INPUT" | jq -r '.cwd // empty')/$CD_TARGET" ;;
+  *)  CD_TARGET="$(normalize "$(echo "$INPUT" | jq -r '.cwd // empty')")/$CD_TARGET" ;;
 esac
 
 # Normalize the cd target

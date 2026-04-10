@@ -25,7 +25,17 @@ if [ -z "$WORKTREE_PATH" ]; then
   exit 0
 fi
 
+# Normalize to POSIX format (Windows paths: C:/... → /c/...)
+normalize() {
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -u "$1"
+  else
+    echo "$1"
+  fi
+}
+
 # Resolve to absolute path (handles trailing slashes, symlinks)
+WORKTREE_PATH=$(normalize "$WORKTREE_PATH")
 WORKTREE_PATH=$(cd "$WORKTREE_PATH" 2>/dev/null && pwd -P)
 if [ -z "$WORKTREE_PATH" ]; then
   # Worktree path doesn't exist on disk — block to be safe
@@ -41,10 +51,13 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
+# Normalize to POSIX format (Windows paths: C:/... → /c/...)
+FILE_PATH=$(normalize "$FILE_PATH")
+
 # Resolve file_path to absolute (it may already be absolute)
 case "$FILE_PATH" in
   /*) ;; # already absolute
-  *)  FILE_PATH="$(echo "$INPUT" | jq -r '.cwd // empty')/$FILE_PATH" ;;
+  *)  FILE_PATH="$(normalize "$(echo "$INPUT" | jq -r '.cwd // empty')")/$FILE_PATH" ;;
 esac
 
 # Normalize: resolve .. and symlinks in the directory portion

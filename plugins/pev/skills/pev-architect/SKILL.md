@@ -41,6 +41,8 @@ Use cortex tools to understand the relevant module boundaries and interfaces:
 
 Focus on understanding module boundaries, public interfaces, and existing design decisions. You do NOT need to read every function you expect to change — the Builder will do that. Your goal is to understand the system well enough to define the problem, sketch a solution, and set boundaries.
 
+**Identify source documents.** As you explore, note every ADR, PRD, design spec, or prior cycle doc that contains constraints or requirements relevant to this pitch. You will record these in `architect.source-documents` — the Reviewer uses this list to verify the pitch doesn't contradict upstream intent. Pay special attention to ADRs that specify HOW something should be implemented (e.g., "use Python API, not CLI wrappers") — these are the constraints most likely to be misinterpreted.
+
 ### Step 3: Write early sections (scope + problem)
 
 **Write these immediately after exploration, before engagement.** You already know enough to define the problem and scope. Persisting them early means they survive if you get cut off during brainstorming.
@@ -76,14 +78,24 @@ Now that you understand the codebase, engage with the user before writing the re
 **Return EXACTLY this format (no other text before or after):**
 
 ```json
-{"status": "NEEDS_INPUT", "preamble": "...markdown context shown to the user before the questions...", "questions": [{"question": "...", "header": "...", "options": [{"label": "...", "description": "..."}, {"label": "...", "description": "..."}], "multiSelect": false}], "context": "...any state you need preserved across the round-trip..."}
+{"status": "NEEDS_INPUT", "preamble": "...markdown context shown to the user before the questions...", "questions": [{"question": "...", "header": "...", "options": [{"label": "...", "description": "..."}, {"label": "...", "description": "..."}], "multiSelect": false}], "doc_edits": [{"doc_id": "cortex::docs.adrs.adr-007", "section_id": "cortex::docs.adrs.adr-007::requirements", "reason": "ADR says 'CLI wrappers acceptable' but this contradicts the intent — should say 'Python API only, no CLI wrappers'", "current_summary": "Current text allows CLI wrappers as an implementation option", "proposed_content": "The DVC integration MUST use the DVC Python API directly. CLI wrappers (dvc add, dvc push, etc.) are NOT permitted."}], "context": "...state to preserve across the round-trip..."}
 ```
 
 **Fields:**
 - `preamble` (optional) — markdown displayed to the user before the questions. Use it for analysis, approach proposals, tradeoff discussion, design rationale — anything that's context rather than a question. Omit for simple rounds where the question speaks for itself.
-- `questions` — follows the `AskUserQuestion` schema: 1-4 questions, each with 2-4 options, a short `header` (max 12 chars), and `multiSelect` boolean.
+- `questions` (optional if `doc_edits` present) — follows the `AskUserQuestion` schema: 1-4 questions, each with 2-4 options, a short `header` (max 12 chars), and `multiSelect` boolean.
 - `context` — returned to you verbatim with the answers. Use it to preserve state across the round-trip: key findings, decisions made, approaches eliminated, scope boundaries agreed. This is critical — it's your memory across rounds.
 - When the orchestrator resumes you, you receive: `{"answers": {"question text": "selected label"}, "context": "...your context..."}`. Continue your work using those answers and your preserved context.
+- `doc_edits` (optional) — proposed changes to source documents (ADRs, PRDs, design specs). Each entry contains:
+  - `doc_id`: the cortex doc ID of the source document to edit
+  - `section_id`: the full section ID to update (doc_id::section)
+  - `reason`: why this edit is needed — what's wrong or missing in the current text
+  - `current_summary`: one-line summary of what the section currently says (so the user can evaluate without reading the full doc)
+  - `proposed_content`: the complete replacement content for the section
+  The orchestrator presents each proposed edit to the user for approval. Approved edits are applied via `cortex_update_section` before resuming you. Rejected edits are reported back so you can adjust your pitch accordingly.
+  **When to use:** When the source document has gaps, ambiguities, or contradictions that would make the pitch unreliable. Fix the source of truth first, then derive the pitch from it.
+  **When NOT to use:** Don't propose edits for stylistic preferences or minor wording. Only propose edits that affect the correctness or completeness of the pitch.
+- If you included `doc_edits`, the orchestrator response also contains: `"doc_edit_results": [{"section_id": "...", "status": "applied|rejected", "user_note": "...optional user comment..."}]`. Check these results — if a critical edit was rejected, you may need to adjust your pitch to work within the existing source doc constraints, or ask the user why.
 
 **Batch questions per round.** Each round is a full return → relay → resume cycle. Pack up to 4 questions into one round (the `AskUserQuestion` schema limit). Front-load your most important questions in round 1.
 
@@ -118,10 +130,36 @@ You don't follow a rigid sequence. Instead, choose from these patterns based on 
 | **Design question** | Direction is set, specific design decisions remain | "Should embeddings live in cortex.db or a separate vector store?" |
 | **Scope check** | Scope is growing, need to trim | "This is getting large. Cut X to keep it in one cycle?" |
 | **Proposal preview** | Ready to write the pitch, want confirmation before writing | Preamble contains a mini-pitch summary: scope, key outcomes, approach. Question asks "Does this capture what you want?" |
+| **Source doc revision** | Source document has gaps, ambiguities, or contradictions that would make the pitch unreliable. Fix the source of truth before deriving the pitch. | Preamble explains what's wrong in the ADR. `doc_edits` proposes specific section changes. Questions (if any) ask about scope or intent. |
+
+#### Source document edits
+
+When you read a source document (ADR, PRD, design spec) and find it has issues that would affect your pitch, propose edits rather than working around the problem. Common triggers:
+
+- **Ambiguous requirements** — the ADR says "may use X" when it should say "must use X" or "must not use X". Ambiguity lets the Builder choose the wrong interpretation.
+- **Missing constraints** — the PRD defines what to build but not how to avoid known pitfalls. Add the constraint.
+- **Contradictory sections** — one section says approach A, another implies approach B. Resolve the contradiction.
+- **Stale content** — the doc references an old API or pattern that's been replaced. Update it.
+
+**Flow:**
+1. Read the source doc during Step 2 (Explore)
+2. Note issues that affect your pitch
+3. In your first NEEDS_INPUT round, include `doc_edits` alongside your brainstorm offer
+4. The orchestrator applies approved edits before resuming you
+5. Re-read the updated sections if needed, then write your pitch from the corrected source
+
+**Do NOT propose edits that:**
+- Change the fundamental intent of the document (that's the user's decision, not yours)
+- Are purely stylistic or organizational
+- Add implementation details to a requirements doc (keep the abstraction level appropriate)
+
+If you're unsure whether an edit is appropriate, include it in your `preamble` as a question rather than a `doc_edit`.
+
+**Brainstorming-driven doc edits:** The triggers above cover issues you find during exploration. A different case: brainstorming produces a decision that deviates from what a source document says. When this happens, propose the `doc_edit` in the same NEEDS_INPUT round where the decision is confirmed — don't defer it as a follow-up task. The user already made the decision; the `doc_edit` captures it in the source of truth. The "don't change fundamental intent" rule above doesn't apply here — the user explicitly changed the intent during brainstorming. If the source doc said "graceful degradation" and the user chose "hard cutover," propose the edit that reflects the user's choice.
 
 #### Convergence guidance
 
-Move from divergent to convergent across rounds. Start broad (approaches, framing), narrow to specific design decisions, end with a proposal preview before writing. This is the expected shape, not a mandatory sequence — use your judgment.
+Move from divergent to convergent across rounds. Start broad (approaches, framing), narrow to specific design decisions, end with a proposal preview before writing. This is the expected shape, not a mandatory sequence — use your judgment. If source doc edits are needed, propose them in round 1 alongside the brainstorm offer. Getting the source docs right early means the rest of the engagement builds on a solid foundation.
 
 Most specific requests need 1-2 rounds. Brainstorming typically takes 3-4 rounds. Converge efficiently — each round should narrow the design space. If you're not converging, present your best recommendation and ask the user to react.
 
@@ -146,6 +184,8 @@ The `context` field still carries ephemeral state for within-round continuity, b
 
 ### Step 5: Write remaining architect sub-sections
 
+**If source doc edits were applied:** Re-read the updated sections of the source documents before writing the remaining pitch sections. Your pitch must be derived from the current state of the source docs, not your memory of what they said before edits. Use `cortex_read_doc` to re-read any section that was updated.
+
 **Write each section as its own `cortex_update_section` call as soon as you have enough context. Don't batch all writes to the end.** If you wrote `scope` and `architect.problem` in Step 3, you have 7 sections remaining:
 
 The section IDs to update are:
@@ -159,6 +199,7 @@ The section IDs to update are:
 | `architect.tasks` | Ordered list of implementation tasks for the Builder. Each task has: a short name, which cortex node IDs to read/modify, which user story it satisfies, and a one-line implementation hint. Order so foundations come first, integration last. 3-8 tasks typical. Example: `1. **Rename DB column** — modify cortex::cortex.index.db schema and migration. Read: cortex::cortex.index.db::init_db, cortex::cortex.index.db::persist_staleness. Satisfies: US-4.` |
 | `architect.required-artifacts` | Concrete deliverables this cycle must produce — the artifacts that prove the work is done. Not the code itself, but what the Reviewer checks against the Builder's output. Example: "Migration script for new columns, 5-10 tests covering staleness per-dimension, updated CLI help text." |
 | `architect.changelog-draft` | Draft changelog entry summarizing what changed from the user's perspective. 2-3 bullet points. The Auditor may refine this after reviewing the actual implementation. |
+| `architect.source-documents` | Every ADR, PRD, design spec, prior cycle doc, or issue that informed this pitch. For each document, include: (1) the cortex doc ID or file path, (2) a one-line summary of the constraint or requirement it contributes to this pitch, (3) whether it was edited during this cycle's planning phase (mark as "edited in this cycle" if doc_edits were applied). Format as a numbered list. If greenfield (no source documents), write "None — greenfield." Example: `1. **cortex::docs.adrs.adr-007** — DVC integration must use Python API, no CLI wrappers or .dvc pointer files. (Edited in this cycle: clarified "may use" → "must use" for Python API requirement.) 2. **cortex::docs.features.cache.prd** — Cache layer PRD defining storage requirements.` |
 
 Each update targets the cycle manifest doc:
 
@@ -189,7 +230,9 @@ Before returning, re-read what you actually wrote and check it against the decis
    - Constraints are consistent with scope agreements
    - Nothing was lost or drifted between the conversation and the written pitch
 4. If a section is off, revise it with `cortex_update_section` before returning.
-5. If everything aligns, proceed to Step 7.
+5. **Source doc alignment** — if source doc edits were applied, verify your pitch is consistent with the updated (not original) text. Re-read any edited sections and compare against your pitch sections. A pitch that was correct before the edits may now be inconsistent.
+6. **Source documents section completeness** — verify `architect.source-documents` lists every doc you read during exploration, not just the ones you edited. The Reviewer uses this list to cross-check — a missing entry means the Reviewer won't check that doc.
+7. If everything aligns, proceed to Step 7.
 
 This is internal self-review — no user interaction. Costs 1-2 tool calls but catches drift between the conversation and the pitch.
 

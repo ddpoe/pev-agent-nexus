@@ -28,28 +28,28 @@ hooks:
     - matcher: "mcp__cortex__cortex_update_section|mcp__cortex__cortex_add_section"
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pev-doc-scope.sh"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-doc-scope.sh"
           timeout: 5
           statusMessage: "Spike: checking doc scope..."
     # Bash: block cd outside worktree
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pev-bash-scope.sh"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-bash-scope.sh"
           timeout: 5
           statusMessage: "Spike: checking bash scope..."
     # Write/Edit: scope to worktree directory only
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pev-worktree-scope.sh"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-worktree-scope.sh"
           timeout: 5
           statusMessage: "Spike: checking worktree scope..."
     # Cortex tools: enforce worktree project_root
     - matcher: "mcp__cortex__"
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pev-cortex-scope.sh"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-cortex-scope.sh"
           timeout: 5
           statusMessage: "Spike: checking cortex scope..."
     # Tool budget gate — LOW limit for testing
@@ -57,13 +57,13 @@ hooks:
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pev-tool-gate.sh 7 Write,cortex_update_section"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 7 Write,cortex_update_section"
           timeout: 5
   PostToolUse:
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pev-tool-counter.sh 3 5 7"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 3 5 7"
           timeout: 5
 ---
 

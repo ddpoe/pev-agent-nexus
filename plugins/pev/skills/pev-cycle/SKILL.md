@@ -58,7 +58,15 @@ Create the cycle manifest inside the worktree (see ref: `manifest-creation`).
 Update `.pev-state.json` counter_file for Architect. Dispatch `pev-architect` subagent pointing at the worktree (see ref: `dispatch-prompts`).
 
 Handle returns:
-- **NEEDS_INPUT**: If the payload includes a `preamble` field, print it as a text message to the user first. Then relay the Architect's `questions` to the user via AskUserQuestion. Resume with SendMessage containing the answers and the Architect's `context` field.
+- **NEEDS_INPUT**: Parse the Architect's JSON payload.
+  1. If `preamble` is present, print it as a text message to the user.
+  2. If `doc_edits` is present, handle source document edit proposals:
+     - For each proposed edit, present to the user: "The Architect proposes updating **{doc_id}** section `{section_id}`: {reason}. Current: {current_summary}. Proposed change: {proposed_content}. **Approve or reject?**"
+     - Use AskUserQuestion with options: "Approve" / "Reject" / "Reject with note" for each edit. Batch up to 4 edits per AskUserQuestion call (the schema limit).
+     - For approved edits: apply via `cortex_update_section(section_id="{section_id}", content="{proposed_content}")`. Record result as `{"section_id": "...", "status": "applied"}`.
+     - For rejected edits: record as `{"section_id": "...", "status": "rejected", "user_note": "..."}`.
+  3. If `questions` is present, relay to the user via AskUserQuestion (existing behavior).
+  4. Resume with SendMessage containing: `{"answers": {...}, "doc_edit_results": [...], "context": "...architect's context..."}`. Omit `doc_edit_results` if no `doc_edits` were proposed.
 - **CONTINUING**: Write checkpoint to manifest, increment incarnation, redispatch.
 - **Complete**: Proceed to Phase 3.
 
@@ -91,10 +99,13 @@ Handle status codes:
 
 Update `.pev-state.json` counter_file for Reviewer. Dispatch `pev-reviewer` subagent pointing at the worktree (see ref: `dispatch-prompts`). The Reviewer is read-only — it cannot modify code or docs.
 
-The Reviewer performs a three-pass review against the Architect's pitch:
-1. **Spec compliance** — per-user-story pass/fail with evidence
-2. **Functionality preservation** — callers checked via cortex_graph, behavioral changes flagged
-3. **Code quality** — issues ranked critical/important/minor
+The Reviewer performs a six-pass review:
+0. **Run tests** — full test suite, immediate FAIL if tests don't pass
+1. **Source document cross-check** — pitch vs referenced ADRs/PRDs for contradictions
+2. **Spec compliance** — reverse mapping (every change authorized?), forward check (every story implemented?), deviation tribunal (Builder decisions justified?)
+3. **Functionality preservation** — callers checked via cortex_graph, behavioral changes flagged
+4. **Code quality** — issues ranked critical/important/minor
+5. **PEV-specific checks** — logging, test annotations, workflow markers
 
 Parse return — extract JSON verdict from `---REVIEW---` separator. Write the review findings to the `review` section of the cycle doc.
 
@@ -112,6 +123,7 @@ Handle status codes:
 - **PASS**: Write review to cycle doc. Present test coverage table. "Review passed. Test coverage above. Approve to merge, or request Builder to add/change tests?"
 - **PASS_WITH_CONCERNS**: Write review to cycle doc. Present concerns and test coverage table to user. Options: (1) proceed to merge, (2) redispatch Builder to fix concerns or improve test coverage, then re-review.
 - **FAIL**: Write review to cycle doc. Present failures and test coverage table to user. Redispatch Builder with the specific failures to fix (same worktree). After fix, re-index the worktree (`cortex_build`), then re-dispatch Reviewer. Max 2 review-fix loops before escalating to user.
+- **Source doc CONTRADICTION in review**: If the Reviewer finds a CONTRADICTION between the pitch and a source document, this is a special case. The Builder implemented the pitch correctly — the pitch itself is wrong. Present to user: "The Reviewer found that the Architect's pitch contradicts [source doc]. The Builder implemented the pitch as written, but the pitch is inconsistent with upstream requirements. Options: (1) abort and re-plan with a new Architect dispatch, (2) proceed to merge knowing the contradiction exists." **HUMAN GATE**.
 - **NEEDS_INPUT**: Relay the Reviewer's questions to the user via AskUserQuestion (same proxy-question protocol as the Architect). Resume with SendMessage containing the answers and the Reviewer's `context` field.
 
 ### 6. Merge
