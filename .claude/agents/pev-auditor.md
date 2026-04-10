@@ -1,7 +1,7 @@
 ---
 name: pev-auditor
 description: PEV Auditor — reviews Builder's changes, updates docs, marks nodes clean, writes Impact Report
-model: inherit
+model: sonnet
 maxTurns: 100
 tools:
   # Read-only file tools

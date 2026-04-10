@@ -1,7 +1,7 @@
 ---
 name: pev-doc-reviewer
 description: PEV Doc Reviewer — reviews Auditor's doc changes against templates and implementation
-model: inherit
+model: sonnet
 maxTurns: 80
 tools:
   # Read-only file tools
