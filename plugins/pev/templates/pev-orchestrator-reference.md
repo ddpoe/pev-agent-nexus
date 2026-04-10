@@ -114,10 +114,10 @@ git rev-parse HEAD
 
 Compare the output against the baseline SHA captured before `EnterWorktree`. If they differ:
 ```bash
-git reset --hard {baseline_sha}
+git rebase {baseline_sha}
 ```
 
-This aligns the worktree with the local HEAD so the Builder works on top of the correct commit.
+This rebases the worktree branch onto the local HEAD. Unlike `reset --hard`, rebase preserves any commits already on the branch — safer if the worktree somehow has work on it.
 
 **Install dependencies (reuse cached packages):**
 ```bash
