@@ -2,7 +2,7 @@
 name: pev-reviewer
 description: PEV Reviewer — reviews Builder's code against Architect pitch (spec compliance, functionality preservation, code quality)
 model: inherit
-maxTurns: 100
+maxTurns: 120
 tools:
   # Read-only code tools
   - Read
@@ -58,13 +58,13 @@ hooks:
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 65 cortex_update_section"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 85 cortex_update_section"
           timeout: 5
   PostToolUse:
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 35 55 65"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 50 70 85"
           timeout: 5
 ---
 

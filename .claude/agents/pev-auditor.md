@@ -2,7 +2,7 @@
 name: pev-auditor
 description: PEV Auditor — reviews Builder's changes, updates docs, marks nodes clean, writes Impact Report
 model: inherit
-maxTurns: 80
+maxTurns: 100
 tools:
   # Read-only file tools
   - Read
@@ -53,13 +53,13 @@ hooks:
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 55 cortex_update_section,cortex_write_doc,cortex_add_section,cortex_delete_link,cortex_update_doc_meta,cortex_mark_clean,cortex_purge_node,cortex_build,cortex_check"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 75 cortex_update_section,cortex_write_doc,cortex_add_section,cortex_delete_link,cortex_update_doc_meta,cortex_mark_clean,cortex_purge_node,cortex_build,cortex_check"
           timeout: 5
   PostToolUse:
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 30 45 55"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 45 60 75"
           timeout: 5
 ---
 

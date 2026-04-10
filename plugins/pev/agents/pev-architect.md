@@ -2,7 +2,7 @@
 name: pev-architect
 description: PEV Architect — reads codebase via cortex tools, writes Shape Up-style pitch to the cycle manifest
 model: inherit
-maxTurns: 100
+maxTurns: 120
 tools:
   # Read-only cortex tools
   - mcp__cortex__cortex_search
@@ -32,19 +32,19 @@ hooks:
     - matcher: "mcp__cortex__cortex_update_section|mcp__cortex__cortex_write_doc|mcp__cortex__cortex_add_section"
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pev-doc-scope.sh"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-doc-scope.sh"
           timeout: 5
           statusMessage: "Checking doc scope..."
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pev-tool-gate.sh 40 cortex_update_section,cortex_write_doc,cortex_add_section,cortex_build"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 80 cortex_update_section,cortex_write_doc,cortex_add_section,cortex_build"
           timeout: 5
   PostToolUse:
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pev-tool-counter.sh 25 35 40"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 50 65 80"
           timeout: 5
 ---
 

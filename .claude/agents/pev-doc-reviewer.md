@@ -2,7 +2,7 @@
 name: pev-doc-reviewer
 description: PEV Doc Reviewer — reviews Auditor's doc changes against templates and implementation
 model: inherit
-maxTurns: 60
+maxTurns: 80
 tools:
   # Read-only file tools
   - Read
@@ -42,13 +42,13 @@ hooks:
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 45 cortex_update_section"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 60 cortex_update_section"
           timeout: 5
   PostToolUse:
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 25 35 45"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 35 50 60"
           timeout: 5
 ---
 

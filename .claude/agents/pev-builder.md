@@ -2,7 +2,7 @@
 name: pev-builder
 description: PEV Builder — implements the Architect's pitch using TDD in an isolated worktree
 model: inherit
-maxTurns: 100
+maxTurns: 120
 tools:
   # Code editing tools
   - Read
@@ -63,13 +63,13 @@ hooks:
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 80 Bash,Edit,Write,cortex_update_section,cortex_add_section"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 100 Bash,Edit,Write,cortex_update_section,cortex_add_section"
           timeout: 5
   PostToolUse:
     - matcher: ""
       hooks:
         - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 50 70 80"
+          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 60 85 100"
           timeout: 5
 ---
 
