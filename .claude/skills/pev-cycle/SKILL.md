@@ -41,7 +41,11 @@ Proceed? (or suggest a different name)
 
 Capture baseline SHA (`git rev-parse HEAD`).
 
-**Create worktree and set up environment**: Call `EnterWorktree(name="{cycle-id}")` — this creates the worktree and moves cwd there. Then `poetry install --no-root`, `cortex_checkout` to copy cortex DB. See ref: `worktree-commands`.
+**Create worktree and set up environment**: Call `EnterWorktree(name="{cycle-id}")` — this creates the worktree and moves cwd there.
+
+**Worktree base verification**: `EnterWorktree` may base the branch on the remote tracking branch instead of local HEAD. Verify: run `git rev-parse HEAD` in the worktree and compare against the baseline SHA captured above. If they differ, the worktree is on a different commit (likely remote main). Fix it: `git reset --hard {baseline_sha}` in the worktree to align with local HEAD.
+
+Then `poetry install --no-root`, `cortex_checkout` to copy cortex DB. See ref: `worktree-commands`.
 
 The cycle doc ID is `cortex::docs.pev-cycles.{cycle-id}`. The `cortex` prefix comes from `cortex.toml` (`project_id = "cortex"`), which is a tracked file present in both the main repo and worktrees.
 

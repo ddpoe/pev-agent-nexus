@@ -105,6 +105,20 @@ EnterWorktree(name="{cycle-id}")
 ```
 Creates `.claude/worktrees/{cycle-id}/` with branch `worktree-{cycle-id}` based on HEAD. Moves session cwd to the worktree.
 
+**Verify worktree base (immediately after EnterWorktree):**
+`EnterWorktree` may base the new branch on the remote tracking branch (e.g., `origin/main`) instead of local HEAD. This means the worktree starts from the remote state, missing any local commits not yet pushed.
+
+```bash
+git rev-parse HEAD
+```
+
+Compare the output against the baseline SHA captured before `EnterWorktree`. If they differ:
+```bash
+git reset --hard {baseline_sha}
+```
+
+This aligns the worktree with the local HEAD so the Builder works on top of the correct commit.
+
 **Install dependencies (reuse cached packages):**
 ```bash
 poetry install --no-root
