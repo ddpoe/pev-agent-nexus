@@ -42,9 +42,12 @@ Before starting the review passes, orient yourself. **Read the Architect's pitch
    - `cortex_read_doc(doc_id="{cycle_doc_id}", section="architect.constraints")`
 2. **Read required artifacts** — what the Architect declared as concrete deliverables:
    - `cortex_read_doc(doc_id="{cycle_doc_id}", section="architect.required-artifacts")`
-3. **Read source documents** — which ADRs, PRDs, and design specs informed the pitch:
+3. **Read the test plan** — the Architect's proposed Tier 2/3 tests linked to user stories:
+   - `cortex_read_doc(doc_id="{cycle_doc_id}", section="architect.test-plan")`
+   - This table is your baseline for Pass 5b — each row is an expected test with its user story link, tier, scenario, and what it proves.
+4. **Read source documents** — which ADRs, PRDs, and design specs informed the pitch:
    - `cortex_read_doc(doc_id="{cycle_doc_id}", section="architect.source-documents")`
-4. **Form expectations** — before reading anything from the Builder, note:
+5. **Form expectations** — before reading anything from the Builder, note:
    - What user stories must be satisfied
    - What approach the solution sketch describes
    - What constraints must not be violated
@@ -52,19 +55,21 @@ Before starting the review passes, orient yourself. **Read the Architect's pitch
 
 ### Phase B: Read the Builder's claims (read SECOND)
 
-5. **Read the Builder's plan and progress** — what the Builder intended and claims is done:
+6. **Read the Builder's plan and progress** — what the Builder intended and claims is done:
    - `cortex_read_doc(doc_id="{cycle_doc_id}", section="builder.build-plan")`
    - `cortex_read_doc(doc_id="{cycle_doc_id}", section="builder.progress")`
    - `cortex_read_doc(doc_id="{cycle_doc_id}", section="decisions")`
-6. **Note any tensions** — where the Builder's plan/decisions diverge from your expectations formed in Phase A. These become investigation targets.
+7. **Note any tensions** — where the Builder's plan/decisions diverge from your expectations formed in Phase A. These become investigation targets.
 
 ### Phase C: Map the impact area
 
-7. **`cortex_check`** on the worktree — get the stale-node overview. This tells you which nodes changed and why.
-8. **Plan your passes** — use the check output to identify:
+8. **`cortex_check`** on the worktree — get the stale-node overview. This tells you which nodes changed and why.
+9. **`cortex_diff(summary_only=True)`** — get a compact summary of all changes: node_id, change summary, lines added/removed. This is your triage tool — use it to distinguish trivial changes (position shifts, whitespace) from substantive ones before diving into individual nodes.
+10. **Plan your passes** — use the check + diff summary to identify:
    - Nodes the pitch says should change -> verify against user stories
    - Stale nodes NOT mentioned in the pitch -> potential scope creep or drift
-   - Callers/dependents to verify -> candidates for `cortex_diff`
+   - Callers/dependents to verify -> candidates for detailed `cortex_diff`
+   - Trivial nodes (summary shows position-only shifts, zero logic changes) -> fast-track in later passes
 
 ## Six-Pass Review
 
@@ -128,7 +133,7 @@ This pass has three sub-phases. The reverse map catches unauthorized changes. Th
 
 Start from the code changes, not the pitch. For every file and function the Builder modified:
 
-1. **Get the full change list** — `git diff --name-only {baseline_sha}..HEAD` for files, `cortex_check` for node-level changes.
+1. **Get the full change list** — `git diff --name-only {baseline_sha}..HEAD` for files, `cortex_check` for node-level changes. Use the `cortex_diff(summary_only=True)` results from Phase C to triage — focus detailed review on nodes with substantive changes, not position-only shifts.
 2. **For each changed file/node**, answer: **Which user story or declared deviation authorizes this change?**
    - If it maps to a user story: record the mapping.
    - If it maps to a declared deviation in `decisions`: record it (evaluated in 2c).
@@ -183,7 +188,7 @@ For each modified file (not new files):
 
 1. Use `cortex_graph` to find callers/dependents of changed functions
 2. Check if the function signature, return type, or behavior changed
-3. For each caller, verify it still works with the new interface — `cortex_diff` is efficient here when you expect a caller to be unchanged and want to confirm it
+3. For each caller, verify it still works with the new interface — use `cortex_diff(node_id=...)` for targeted diffs. **Do not diff everything at once.** Use the `summary_only=True` results from Phase C to plan batching — group nodes into reasonably-sized batches and skip full diffs for nodes the summary shows are trivial (position-only shifts, zero logic changes).
 4. Flag any behavioral changes that aren't explicitly requested by user stories
 
 For refactors specifically:
@@ -219,16 +224,39 @@ For each modified code node, read the source and judge whether it needs logging 
 
 For code that already had logging, check if the logging was updated to reflect the changes.
 
-#### 5b. Test annotation audit
+#### 5b. Test annotation audit (against Architect's test plan)
 
-**Tier verification:** Is each test at the right tier?
-- Tier 1 (plain pytest) — internal logic, edge cases, helpers
-- Tier 2 (`@workflow(purpose=...)`) — meaningful subsystem tests
-- Tier 3 (`@workflow` + `Step()`) — E2E user-story-level scenarios
+Read the test annotation policy at `${CLAUDE_PROJECT_DIR}/.claude/templates/test-annotation-policy.md` for the tier decision rule. Then compare the Builder's actual tests against the Architect's `test-plan` table row by row.
+
+**Test plan compliance — walk the Architect's table:**
+
+For each row in the Architect's test plan:
+
+| Check | What to verify |
+|---|---|
+| **Test exists?** | Did the Builder write a test matching this scenario? Find the actual test function. |
+| **Tier correct?** | Does the test use the tier the Architect proposed? Tier 2 = `@workflow(purpose=...)`, Tier 3 = `@workflow` + `Step()`. |
+| **Scenario match?** | Does the test actually exercise the scenario described? Read the test code — don't trust the name alone. |
+| **Proves what it claims?** | Does the test validate the acceptance criterion listed in the "Proves" column? A test that runs the right scenario but asserts the wrong thing doesn't prove the story. |
+| **Verdict** | **COVERED** (test exists, tier correct, scenario matches, proves the claim), **PARTIAL** (test exists but tier wrong, scenario incomplete, or assertion misses the acceptance criterion), **MISSING** (no test for this row), **DEVIATED** (Builder changed the test — check decisions for justification) |
+
+**Builder additions and deviations:**
+- Tests the Builder added beyond the test plan: are they justified? Tier 1 additions are expected (Builder's domain). Tier 2/3 additions not in the plan should map to a decision in the decisions section.
+- Tests the Builder dropped or re-tiered from the plan: is there a recorded decision with justification? An unrecorded deviation is severity `important`.
 
 **Budget check:** 5-10 focused tests per subsystem change. Past 15, likely testing implementation details. Flag excessive counts and recommend consolidation.
 
 **Gap detection:** For each changed code node, check `cortex_graph(direction="in")` for `validates` edges. Missing coverage goes in `quality_issues` with severity `important`.
+
+**Build the test plan compliance table** for the verdict:
+
+```
+| Architect Proposed | Builder Actual | Tier | Verdict | Notes |
+|---|---|---|---|---|
+| US-1 Tier 3: E2E broken link detection | test_broken_links_e2e | 3 | COVERED | Scenario and assertion match |
+| US-1 Tier 2: Scanner subsystem | (none) | - | DEVIATED | Builder merged into E2E test — D-4 justified |
+| US-2 Tier 2: Severity ranking | test_severity_order | 2 | PARTIAL | Asserts ordering but not specific rank position |
+```
 
 #### 5c. Workflow step markers
 
@@ -430,10 +458,11 @@ The orchestrator writes this to the manifest and dispatches a fresh incarnation.
 - **Be specific about PARTIAL**: Say exactly what's missing — "test covers happy path but not error case" is actionable, "needs more tests" is not.
 - **Tests ran in Pass 0**: The full suite ran at the start. For individual test files during later passes, use `poetry run pytest {test_file}` to verify specific tests. A review that says PASS on a failing test is a review failure.
 - **Bash conventions:**
-  - **git:** Issue each git command as a **separate Bash tool call** — never chain with `&&` or `;`. No `-C` flag needed — your cwd is the worktree.
-  - **pytest:** Run directly: `poetry run pytest tests/ -x -q`.
+  - **Always use `-C` or `cd` to target the worktree.** Do not assume your cwd is the worktree — always use `git -C {worktree_path}` for git commands and `cd {worktree_path} && command` for everything else.
+  - **git:** Issue each git command as a **separate Bash tool call** — never chain with `&&` or `;`. Always use `git -C {worktree_path} <command>`.
+  - **pytest:** `cd {worktree_path} && poetry run pytest tests/ -x -q`.
     - **When tests fail, debug in the worktree.** Read the traceback and fix the code — the worktree setup is correct; the code has a bug.
-  - **Other commands:** Run directly — cwd is the worktree.
+  - **Other commands:** `cd {worktree_path} && command`.
 
 ## Budget Management
 

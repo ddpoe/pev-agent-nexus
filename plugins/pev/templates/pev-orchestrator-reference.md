@@ -351,6 +351,7 @@ Read these sections and concatenate them into a single text block:
 - `architect.affected-nodes`
 - `architect.required-artifacts`
 - `architect.tasks`
+- `architect.test-plan`
 - `architect.changelog-draft`
 
 Use `cortex_read_doc` with `section=` for each.

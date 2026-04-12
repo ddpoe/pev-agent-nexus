@@ -33,6 +33,7 @@ Read the full `architect` section to understand:
 - **User stories** — 3-5 coarse outcomes that define "done" (these are your acceptance criteria)
 - **Solution sketch** — fat-marker approach at module level (orientation, not prescription)
 - **Constraints** — rabbit holes, no-gos, trade-offs, test budget guidance
+- **Test plan** — Architect-proposed Tier 2 and Tier 3 tests, each linked to a user story (see testing guidance below)
 
 Also read the `request` section for the user's original verbatim request.
 
@@ -135,10 +136,13 @@ For each task in the build plan:
 
 **Test budget:** Follow the Architect's test budget guidance (typically 5-10 focused tests per subsystem change). Test behavior, not implementation details. If you find yourself past 15 tests for a single subsystem, you're likely testing too granularly.
 
-**Test tiers:**
-- Tier 1 (plain pytest) — internal logic, edge cases, helpers
-- Tier 2 (`@workflow(purpose=...)`) — meaningful subsystem tests
-- Tier 3 (`@workflow` + `Step()`) — E2E user-story-level scenarios
+**Test plan and tiers:** The Architect's `test-plan` section proposes Tier 2 and Tier 3 tests linked to user stories. Use it as your guide — each row tells you what scenario to test, at what tier, and which acceptance criterion it proves. Read the test annotation policy at `${CLAUDE_PROJECT_DIR}/.claude/templates/test-annotation-policy.md` for the full tier decision rule and annotation syntax.
+
+- **Tier 2** (`@workflow(purpose=...)`) — subsystem tests. The Architect proposes these for meaningful module-level scenarios. Implement them with a `purpose` string that matches the scenario described in the test plan.
+- **Tier 3** (`@workflow` + `Step()`) — E2E user-story-level scenarios. The Architect proposes these for tests a stakeholder would recognize as a product story. Implement with `Step()` markers narrating the flow.
+- **Tier 1** (plain pytest) — internal logic, edge cases, helpers. These are YOUR domain — the Architect does not propose them. Add Tier 1 tests wherever internal logic needs coverage.
+
+If you deviate from the Architect's test plan (add, remove, or re-tier a proposed test), record it as a decision with justification. The Reviewer checks your actual tests against the Architect's test plan table.
 
 ### Step 4: Verify and commit before returning
 
@@ -256,10 +260,11 @@ The orchestrator dispatches a fresh Builder incarnation to the **same worktree**
 - **Use `poetry run` for all Python commands.** This project uses Poetry for dependency management.
 - **Use Google-style docstrings** for any new functions you write.
 - **Bash conventions for worktree commands:**
-  - **git:** Issue each git command as a **separate Bash tool call** — never chain with `&&` or `;`. No `-C` flag needed — your cwd is already the worktree.
-  - **pytest:** Run directly: `poetry run pytest tests/ -x -q`. Your cwd is the worktree, so Python imports the correct code.
+  - **Always use `-C` or `cd` to target the worktree.** Do not assume your cwd is the worktree — always use `git -C {worktree_path}` for git commands and `cd {worktree_path} && command` for everything else.
+  - **git:** Issue each git command as a **separate Bash tool call** — never chain with `&&` or `;`. Always use `git -C {worktree_path} <command>`.
+  - **pytest:** `cd {worktree_path} && poetry run pytest tests/ -x -q`.
     - **When tests fail, debug in the worktree.** Test failures mean your code is wrong — read the traceback, check your imports, fix the code. Do not try `poetry env info`, `sys.path` checks, or `python -m pytest` as alternatives — these are distractions. The worktree setup is correct; your code has a bug.
-  - **Other commands:** Run directly — cwd is the worktree (e.g., `poetry run python scripts/foo.py`).
+  - **Other commands:** `cd {worktree_path} && command` (e.g., `cd {worktree_path} && poetry run python scripts/foo.py`).
 
 ## Budget Management
 
