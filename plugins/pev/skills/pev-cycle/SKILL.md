@@ -72,9 +72,15 @@ Handle returns:
 
 ### 3. Approve Plan
 
-Read the cycle manifest. Present the Architect's pitch — scope, user stories, solution sketch, constraints.
+Read the cycle manifest. Present the Architect's pitch sections to the user in this order:
 
-**HUMAN GATE** — "Approve this pitch to proceed to Builder phase, or provide feedback to revise?"
+1. **Scope** — `{cycle_doc_id}::scope`
+2. **User stories** — `{cycle_doc_id}::architect.user-stories`
+3. **Solution sketch** — `{cycle_doc_id}::architect.solution-sketch`
+4. **Constraints** — `{cycle_doc_id}::architect.constraints`
+5. **Test plan** — `{cycle_doc_id}::architect.test-plan` (render the full table; do not summarize). The user needs to see which tests the Architect proposes before approving — this is how they catch missing coverage or over-testing early, rather than after the Builder has already implemented the wrong surface.
+
+**HUMAN GATE** — "Approve this pitch (scope, user stories, solution sketch, constraints, test plan) to proceed to Builder phase, or provide feedback to revise?"
 
 - **Approved**: Update status to `builder` (see ref: `status-updates`). Proceed to Phase 4.
 - **Rejected**: Redispatch Architect with feedback appended (see ref: `dispatch-prompts`). Loop back to Phase 3.
