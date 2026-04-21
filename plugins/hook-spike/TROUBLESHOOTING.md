@@ -99,28 +99,11 @@ Its tests are deliberately specific. When a hook regresses, the matrix tells you
 
 ---
 
-## 5. Architecture invariants
+## 5. Hook I/O invariants
 
-Future hooks in this marketplace must respect these patterns, or they won't work on the plugin path.
+The invariants below are debugging-relevant — patterns you need to understand to interpret observed hook behavior. For a full architectural tour of how PEV uses hooks (tool permissions matrix, agent responsibilities, cycle manifest structure, `.pev/` SOPs), see [`../pev/DESIGN.md`](../pev/DESIGN.md).
 
-### 5.1 Registration
-
-- **Hooks live in `plugins/<name>/hooks/hooks.json`.** Agent-frontmatter hooks do not fire in marketplace-installed plugins (see §7.1).
-- **Paths use `${CLAUDE_PLUGIN_ROOT}/hooks/...`.** Confirmed by hook-spike to expand correctly.
-- **Matchers are full-string regex.** See §7.2.
-
-### 5.2 Dispatch
-
-- PEV hook scripts gate on the `agent_type` field from stdin JSON. If it doesn't start with `pev:`, the script exits 0 (pass-through). This keeps hooks silent for the orchestrator session and for unrelated subagents.
-- Per-agent config (budgets, allowlists) lives inside the hook script, dispatched via a `case "$AGENT_TYPE"` block. Do NOT put per-agent config in `.pev-state.json`.
-
-### 5.3 State
-
-- `.pev-state.json` at the worktree root carries cycle-scoped data (`cycle_id`, `cycle_doc_id`, `worktree_path`). Written once per cycle.
-- Counter files are keyed on `agent_id` (unique per subagent invocation): `/tmp/pev-counter-<agent_id>.txt`. Auto-cleaned by `pev-subagent-stop.sh`.
-- Do NOT put counter paths in the state file. Do NOT try to use the state file to identify the current agent — it races with orchestrator tool calls.
-
-### 5.4 Block signaling
+### 5.1 Block signaling
 
 - Reliable pattern: `echo "BLOCKED: reason" >&2; exit 2`
 - Unreliable: `echo "{...hookSpecificOutput...}"` on stdout with no `exit 2` (see §7.4)
@@ -383,58 +366,6 @@ The key design choices worth copying:
 - **Clean up in SubagentStop.** `pev-subagent-stop.sh` removes the counter file when the subagent returns — keeps `/tmp/` from accumulating stale per-run files across sessions.
 - **Use `/tmp/` for transient, `CLAUDE_PLUGIN_DATA` for durable.** `/tmp/` is effectively a scratchpad — OK if it's lost. `CLAUDE_PLUGIN_DATA` persists across claude restarts and is the right place for caches or per-plugin config you genuinely want preserved.
 - **Prefix filenames with your plugin name** to avoid collisions between plugins sharing `/tmp/` (`pev-counter-*`, not `counter-*`).
-
----
-
-## 5.7 Project SOPs — the `.pev/` convention
-
-Some PEV behavior varies per project and shouldn't be hardcoded in the plugin — doc taxonomies differ, test tiers differ, review emphasis differs. Those live in per-project SOP files under `<project_root>/.pev/`:
-
-```
-<project_root>/
-  .pev/
-    doc-topology.json      ← Auditor (proactive updates) + Doc Reviewer (verification) read this
-    test-policy.json       ← Architect, Builder, Reviewer read this
-    review-criteria.json   ← Reviewer reads this (optional)
-```
-
-All three are **DocJSON** format (as of v2.1.0) so cortex can index them when `.pev/` is added to the project's cortex paths. Earlier `.pev/*.md` files are no longer read — rename and wrap per the templates shipped at `${CLAUDE_PLUGIN_ROOT}/templates/`.
-
-### Design principles
-
-- **Git-tracked, not gitignored.** Worktrees check out the same tree as main — git-tracking means every worktree has the file at `{worktree_path}/.pev/...` automatically, so subagents running in worktrees see it without any copy-on-checkout step.
-- **Plugin-shipped fallbacks.** Each SOP has a default at `${CLAUDE_PLUGIN_ROOT}/templates/<name>.md` that the skill reads if the project file doesn't exist. New projects work immediately; customization is opt-in.
-- **Read-only for the plugin.** Skills read but never write these files. The user maintains them manually.
-
-### Path resolution in skills
-
-Convention in every PEV skill that reads an SOP:
-
-```
-Read {worktree_path}/.pev/<file>.md        — primary
-Read ${CLAUDE_PLUGIN_ROOT}/templates/<file>.md  — fallback if primary missing
-```
-
-`{worktree_path}` is provided in each subagent's dispatch prompt. For the Auditor and Doc Reviewer (which run on main repo post-merge), substitute `${CLAUDE_PROJECT_DIR}` for `{worktree_path}`.
-
-### What goes in each SOP
-
-| File | Purpose | Used by |
-|---|---|---|
-| `doc-topology.json` | Project doc taxonomy — categories, triggers, auditor-action per category, doc-reviewer-check | Auditor (proactive updates), Doc Reviewer (verification) |
-| `test-policy.json` | Test tiers, annotation contract, coverage expectations, budget | Architect, Builder, Reviewer |
-| `review-criteria.json` (optional) | Project-specific code-review emphasis (logging conventions, anti-patterns) | Reviewer |
-
-### Adding a new SOP
-
-If a future skill needs project-specific config that doesn't fit the existing files:
-
-1. Create `plugins/pev/templates/<new-sop>.md` as the plugin-shipped default
-2. Update the relevant skill to read `{worktree_path}/.pev/<new-sop>.md` with fallback
-3. Document it in this section
-4. Update the TROUBLESHOOTING categories table above
-
-Don't grow individual SOP files past ~3 concerns — split into separate files when they diverge.
 
 ---
 
@@ -762,20 +693,6 @@ Five-step checklist:
 
 ---
 
-## 10. Version history — key fixes in the v1.8.x arc
+## 10. Version history
 
-Useful for reasoning about regressions. If a symptom matches an earlier bug, check whether the fix was reverted.
-
-| Version | PR | Change |
-|---|---|---|
-| 1.8.0 | #3 | Migrate to `hooks.json`-only registration with `agent_type` dispatch. Agent-frontmatter hooks no longer used. |
-| 1.8.1 | #4 | Normalize Windows `cwd` with `cygpath -u` before building state-file path. |
-| 1.8.2 | #5 | Add diagnostic `echo >> /tmp/pev-hook-debug.log` to every hook (before the agent_type gate) so hook invocations are observable. |
-| 1.8.3 | #6 | Pipe state file via `cat "$STATE_FILE" | jq …` — native Windows jq can't open `/c/` paths. |
-| 1.8.4 | #7 | `pev-bash-scope.sh` block path switched from stdout `hookSpecificOutput` JSON to stderr + `exit 2`. |
-| 1.8.5 | #8 | Replace `grep -oP` with POSIX `sed` (PCRE locale bug). Fix `cortex-scope` matcher `mcp__cortex__` → `mcp__cortex__.*` (full-string match). |
-| 1.8.6 | #11 | Architect skill: fix stale `${CLAUDE_PROJECT_DIR}/.claude/templates/` path to plugin-scoped; loosen "As a developer" → "As a [user type]"; orchestrator pitch display now always includes the test plan. |
-| 1.9.0 | #12 | `.pev/` project SOP convention — per-project config for Doc Reviewer (taxonomy), Architect/Builder/Reviewer (test policy), Reviewer (criteria). Skills read project SOPs first, fall back to plugin templates. Doc Reviewer mandate rewritten as drift scanner for non-graph docs. |
-| 1.9.1 | #13 | Strip diagnostic `echo >> /tmp/pev-hook-debug.log` lines from every PEV hook. Hooks are stable; the per-invocation log was steady-state noise. See §8.3 for the recipe to re-enable when troubleshooting. |
-| 2.0.0 | #14 | Two shapes for PEV: `/pev-cycle` (full) and `/pev-instance` (slim). Cycle docs relocated from `docs/pev-cycles/` to `docs/pev/cycles/` so full cycles and instances share a tree. Reviewer Pass 5c framed `cortex_workflow_list(steps=true)` explicitly as a "developer-declared core mechanisms" signal used across passes. **Breaking change**: consumers with existing cycle history should move `docs/pev-cycles/` → `docs/pev/cycles/` and update any cortex doc references from `docs.pev-cycles.*` to `docs.pev.cycles.*`. |
-| 2.1.0 | this PR | `.pev/` SOPs converted to DocJSON format + `doc-review-guide.md` renamed to `doc-topology.json` with expanded schema (per-category `auditor-action` field). Auditor now reads the topology and proactively updates guide-listed doc categories. Doc Reviewer's role narrows to verifier + gap catcher. **Breaking change**: consumers must migrate `.pev/*.md` → `.pev/*.json` — copy the structure from `${CLAUDE_PLUGIN_ROOT}/templates/*.json`. |
+Moved to [`../../CHANGELOG.md`](../../CHANGELOG.md) (repo root). Keep a Changelog format, full release notes per version, useful for reasoning about regressions.
