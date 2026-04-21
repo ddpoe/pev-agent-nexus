@@ -18,15 +18,23 @@ claude plugin install hook-spike@pev-agent-nexus   # companion: plugin-hook debu
 
 **Why both?** `hook-spike` is a small companion plugin that gives you a 10-second smoke-test for plugin infrastructure (`/hs-heartbeat`) — invaluable when PEV misbehaves and you need to isolate whether the problem is in PEV itself or in the plugin-hook platform underneath. You can skip it and install later if needed, but the footprint is tiny and it pays for itself the first time something breaks.
 
-### 1b. Cycle & instance directories
+### 1b. Cycle & instance locations (if needed)
 
-PEV writes cycle manifests to `docs/pev/cycles/` and slim-mode checkins to `docs/pev/instances/`. Create the directories:
+Your project's doc-serialization convention determines whether you need to pre-create directories:
+
+**Nested-dir projects** — cycle manifests live at `docs/pev/cycles/<cycle-id>.json` and instance checkins at `docs/pev/instances/<id>.json`. Pre-create:
 
 ```bash
 mkdir -p docs/pev/cycles docs/pev/instances
 ```
 
-You can commit `.gitkeep` files if you want empty directories tracked.
+Commit `.gitkeep` files if you want empty dirs tracked.
+
+**Flat-dotted projects** — cortex serializes docs as `docs/<dotted-id>.json`. Cycle manifests land at `docs/pev.cycles.<cycle-id>.json` and instance checkins at `docs/pev.instances.<id>.json`. No directories to create; PEV writes the files directly under `docs/`.
+
+**Not sure which you are?** Look at existing cortex docs:
+- `docs/features/<feature>/prd.json` → nested
+- `docs/features.<feature>.prd.json` → flat-dotted
 
 ### 1c. Copy SOP templates (optional but recommended)
 
@@ -53,20 +61,20 @@ See [USER_GUIDE.md §Customizing via `.pev/` SOPs](./USER_GUIDE.md#customizing-v
 
 ### 1d. (Optional) Let cortex index your SOPs
 
-If you want `cortex_search` / `cortex_history` over your `.pev/` SOPs, add `.pev` to your project's cortex index paths in `cortex.toml`:
+`cortex.toml` has a `doc_dirs` key under `[cortex.scan]` that defaults to `["docs"]`. To make your `.pev/` SOPs searchable via `cortex_search` and trackable via `cortex_history`, add `.pev` to the list:
 
 ```toml
-[paths]
-docs = ["docs/", ".pev/"]   # add .pev/ to whatever paths cortex already indexes
+[cortex.scan]
+doc_dirs = ["docs", ".pev"]
 ```
 
-Then:
+Then re-index:
 
 ```bash
-cortex build
+cortex build .
 ```
 
-Not required — skills read the files directly via the Read tool regardless. But indexing them makes history and search available for humans and agents.
+**Not required** — PEV skills read `.pev/*.json` directly via the Read tool regardless of indexing. Opt in when you want cortex-native queries over your SOP history (who changed what, when, and why).
 
 ### 1e. Verify
 
@@ -98,26 +106,33 @@ Run only the migrations that apply to the version you're upgrading *from*. Migra
 
 ### Pre-2.0.0 → any 2.x
 
-Cycle docs moved from `docs/pev-cycles/` to `docs/pev/cycles/`. Cortex doc IDs changed from `{project_id}::docs.pev-cycles.*` to `{project_id}::docs.pev.cycles.*`.
+Cycle docs moved from `docs/pev-cycles.*` to `docs/pev.cycles.*` (cortex doc IDs `docs.pev-cycles.*` → `docs.pev.cycles.*`). The filesystem command depends on your project convention.
+
+**Nested-dir projects:**
 
 ```bash
-# Move the directory
 mkdir -p docs/pev
 git mv docs/pev-cycles docs/pev/cycles
-
-# Re-index so cortex picks up the new doc IDs
-cortex build
-
-# Also create the new instances dir while you're here
 mkdir -p docs/pev/instances
-
-# Commit
+cortex build .
 git add -A && git commit -m "chore: migrate docs/pev-cycles -> docs/pev/cycles (PEV v2.0.0)"
+```
+
+**Flat-dotted projects** — rename each file's prefix:
+
+```bash
+for f in docs/pev-cycles.*.json; do
+  git mv "$f" "${f/pev-cycles./pev.cycles.}"
+done
+cortex build .
+git add -A && git commit -m "chore: migrate docs/pev-cycles.* -> docs/pev.cycles.* (PEV v2.0.0)"
 ```
 
 ### 2.0.x → 2.1.0+
 
-`.pev/` SOPs changed from markdown to DocJSON. The `doc-review-guide.md` file was renamed to `doc-topology.json` and gained new fields (`Auditor action` per category, used for proactive doc updates).
+**Skip this if you never created `.pev/*.md` files.** Consumers who only used plugin-default SOPs (never copied templates into `.pev/`) have nothing to migrate — plugin-shipped templates are already DocJSON and v2.1.1 picks them up automatically.
+
+For consumers who customized SOPs in the markdown era: `.pev/` SOPs changed from markdown to DocJSON. The `doc-review-guide.md` file was renamed to `doc-topology.json` and gained new fields (`Auditor action` per category, used for proactive doc updates).
 
 ```bash
 # For each .pev/*.md file you customized, port its content to the new JSON template:
@@ -166,6 +181,26 @@ Start with [`../hook-spike/TROUBLESHOOTING.md`](../hook-spike/TROUBLESHOOTING.md
 ### Multiple PEV versions showing up in `claude plugin list`
 
 Old registrations from previous projects' local/project-scope installs can linger in `~/.claude/plugins/installed_plugins.json`. `cd` into each original project and run `claude plugin uninstall pev --scope=<local|project>` to clean up. The user-scope install remains.
+
+### `claude plugin list` shows an older version than I expected
+
+If `/pev-cycle` seems to resolve to stale behavior, the active install may be behind the marketplace:
+
+```bash
+claude plugin list                                   # confirm active version
+claude plugin marketplace update pev-agent-nexus     # refresh marketplace cache
+claude plugin update pev@pev-agent-nexus             # pull latest
+claude plugin list                                   # reconfirm
+```
+
+Old cache dirs under `~/.claude/plugins/cache/pev-agent-nexus/pev/` from prior installs are **harmless but can be removed** if you want a tidy cache. Keep only the directory matching your active version:
+
+```bash
+ls ~/.claude/plugins/cache/pev-agent-nexus/pev/             # see everything on disk
+rm -rf ~/.claude/plugins/cache/pev-agent-nexus/pev/2.0.0    # remove a specific old version
+```
+
+Do not remove the directory matching the currently-registered version — Claude Code loads from it at runtime.
 
 ## 4. After setup, where to go
 

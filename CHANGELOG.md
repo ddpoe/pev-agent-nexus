@@ -11,7 +11,7 @@ Nothing pending.
 ## [2.1.0] — 2026-04-21
 
 ### Added
-- Project SOPs are now DocJSON (`.json` instead of `.md`) so cortex can index them when a project adds `.pev/` to its cortex paths. LLM agents parse JSON fine; content fields remain markdown (#15).
+- Project SOPs are now DocJSON (`.json` instead of `.md`) so cortex can index them when a project adds `.pev` to `doc_dirs` under `[cortex.scan]` in `cortex.toml`. LLM agents parse JSON fine; content fields remain markdown (#15).
 - `doc-topology.json` schema gains `Auditor action` field — the Auditor now reads the topology and proactively updates guide-listed doc categories during post-implementation. Boundary shifts from "Auditor = graph-only" to "Auditor = graph + guide-listed." Doc Reviewer stays as verifier + gap catcher (#15).
 
 ### Changed

@@ -1,7 +1,7 @@
 {
   "name": "pev",
   "description": "PEV (Plan-Execute-Validate) agent workflow — orchestrates Architect, Builder, Reviewer, and Auditor subagents for structured code changes with cortex integration",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "author": {
     "name": "ddpoe"
   },

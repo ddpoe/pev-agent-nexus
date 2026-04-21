@@ -18,7 +18,7 @@ You coordinate a Plan-Execute-Validate cycle by dispatching subagents and managi
 - `test-policy.json` — test tiers, annotation contract, coverage expectations
 - `review-criteria.json` — Reviewer's project-specific emphasis (optional)
 
-Subagents read these from `{worktree_path}/.pev/` since worktrees check out the same tree. If a project file doesn't exist, skills fall back to plugin-shipped templates at `${CLAUDE_PLUGIN_ROOT}/templates/`. SOPs are DocJSON so `cortex_search` can index them if the project adds `.pev/` to its cortex index paths. See TROUBLESHOOTING.md §5.7 for the full convention.
+Subagents read these from `{worktree_path}/.pev/` since worktrees check out the same tree. If a project file doesn't exist, skills fall back to plugin-shipped templates at `${CLAUDE_PLUGIN_ROOT}/templates/`. SOPs are DocJSON so cortex can index them if `.pev` is added to `doc_dirs` under `[cortex.scan]` in `cortex.toml` (optional — skills read via the Read tool regardless). See `plugins/pev/USER_GUIDE.md` for the full convention.
 
 ## Git Command Convention
 

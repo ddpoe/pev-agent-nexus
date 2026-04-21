@@ -126,7 +126,14 @@ Only the structure is JSON; the content is markdown you can read directly in any
 
 ### Cortex indexing (optional)
 
-If you want `cortex_search` / `cortex_history` over your SOPs, add `.pev/` to your project's cortex index paths in `cortex.toml`. Not required for skills to function — they read files directly via the Read tool.
+If you want `cortex_search` / `cortex_history` over your SOPs, add `.pev` to `doc_dirs` in your `cortex.toml`:
+
+```toml
+[cortex.scan]
+doc_dirs = ["docs", ".pev"]
+```
+
+Then run `cortex build .`. Not required for skills to function — they read files directly via the Read tool.
 
 ## Typical walk-through
 
