@@ -22,7 +22,7 @@ Cortex doc ID: `{project_id}::docs.pev-cycles.{cycle-id}` — the `{project_id}`
 
 ## Manifest Creation
 
-Use `cortex_write_doc` to create the cycle manifest. Read the cycle manifest template from `${CLAUDE_PROJECT_DIR}/.claude/templates/cycle-manifest-template.json` for the full section layout and instructions.
+Use `cortex_write_doc` to create the cycle manifest. Read the cycle manifest template from `${CLAUDE_PLUGIN_ROOT}/templates/cycle-manifest-template.json` for the full section layout and instructions.
 
 Call pattern:
 ```
@@ -527,7 +527,7 @@ rm -f .pev-state.json
 
 ## Error Handling
 
-**Agent dispatch fails:** Check that `.claude/agents/pev-{agent}.md` exists. Suggest user run `/agents` to reload definitions.
+**Agent dispatch fails:** Check that the pev plugin is installed and enabled (`claude plugin list`). Agent definitions ship in the plugin at `${CLAUDE_PLUGIN_ROOT}/agents/pev-{agent}.md`. If the plugin looks fine but dispatch still fails, see `plugins/hook-spike/TROUBLESHOOTING.md` §7 for known failure modes.
 
 **cortex_write_doc fails:** Check that `docs/pev-cycles/` directory exists.
 
