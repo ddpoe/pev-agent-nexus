@@ -21,7 +21,7 @@ Record the worktree path (cwd after EnterWorktree). Record the main repo path fr
 ### 2. Set up environment
 
 ```bash
-poetry install --no-root
+poetry install
 ```
 
 Copy cortex DB into worktree:

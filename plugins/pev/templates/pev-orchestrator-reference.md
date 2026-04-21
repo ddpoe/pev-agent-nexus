@@ -118,9 +118,9 @@ This rebases the worktree branch onto the local HEAD. Unlike `reset --hard`, reb
 
 **Install dependencies (reuse cached packages):**
 ```bash
-poetry install --no-root
+poetry install
 ```
-This creates a new venv for the worktree and installs all deps from the lock file. With a warm pip cache this is fast. The `--no-root` flag skips installing the project package itself (not needed — agents import from local source).
+Creates a new venv for the worktree and installs all deps from the lock file, plus the project itself in editable mode. With a warm pip cache this is fast. Previously used `--no-root` to skip installing the project package, but that broke console scripts, forced `sys.path` gymnastics for non-pytest invocations, and diverged from how a developer would typically work locally. The ~2 seconds saved wasn't worth the workflow friction.
 
 **Note:** Each worktree creates a venv in `{cache-dir}/virtualenvs/`. These are not auto-cleaned when the worktree is removed. Periodically clean up stale venvs with `poetry env list` and `poetry env remove {name}` from the main repo.
 

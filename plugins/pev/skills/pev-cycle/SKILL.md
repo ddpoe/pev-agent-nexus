@@ -53,7 +53,7 @@ Capture baseline SHA (`git rev-parse HEAD`).
 
 **Worktree base verification**: `EnterWorktree` may base the branch on the remote tracking branch instead of local HEAD. Verify: run `git rev-parse HEAD` in the worktree and compare against the baseline SHA captured above. If they differ, the worktree is on a different commit (likely remote main). Fix it: `git rebase {baseline_sha}` in the worktree to align with local HEAD.
 
-Then `poetry install --no-root`, `cortex_checkout` to copy cortex DB. See ref: `worktree-commands`.
+Then `poetry install`, `cortex_checkout` to copy cortex DB. See ref: `worktree-commands`.
 
 Read `cortex.toml` in the project root to get the `project_id` value. The cycle doc ID is `{project_id}::docs.pev.cycles.{cycle-id}` — do NOT hardcode the prefix, it varies per project.
 
