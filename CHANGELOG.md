@@ -8,6 +8,12 @@ Versions loosely follow [Semantic Versioning](https://semver.org/) — major bum
 
 Nothing pending.
 
+## [2.1.3] — 2026-04-21
+
+### Fixed
+- `pev-doc-reviewer.md` was not registered in `plugins/pev/.claude-plugin/plugin.json`'s `agents` array, so Claude Code never loaded it. Any `/pev-cycle` that reached Phase 7.5 (Doc Review) failed with `Agent type 'pev:pev-doc-reviewer' not found`. Added to the manifest.
+- `pev-doc-scope.sh` blocked the Auditor from writing to live feature docs during Phase 7 (Audit), contradicting the Auditor's documented role in `DESIGN.md` ("Doc-write on live feature docs but no code-write"). The hook now exempts `pev:pev-auditor` from the cycle-manifest-only scope; Architect, Builder, Reviewer, and Doc Reviewer remain scoped.
+
 ## [2.1.0] — 2026-04-21
 
 ### Added

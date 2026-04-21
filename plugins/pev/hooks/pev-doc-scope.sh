@@ -8,9 +8,12 @@
 
 INPUT=$(cat)
 
-# Gate: PEV subagents only
+# Gate: PEV subagents only. Auditor is exempt — it runs on main post-merge and
+# writes to live feature docs (see DESIGN.md tool permissions matrix). All
+# other PEV subagents are scoped to the cycle manifest.
 AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
 case "$AGENT_TYPE" in
+  pev:pev-auditor) exit 0 ;;
   pev:*) ;;
   *) exit 0 ;;
 esac
