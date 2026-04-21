@@ -1,13 +1,20 @@
 #!/bin/bash
-# pev-bash-scope.sh — PreToolUse hook for Bash calls in PEV subagents
-# Blocks Bash commands that `cd` into a directory outside the worktree.
-# This prevents the anti-pattern of running pytest from the main repo
-# with worktree test paths (which imports the wrong code).
+# pev-bash-scope.sh — PreToolUse(Bash) hook for PEV subagents.
+# Blocks Bash commands that cd into a directory outside the worktree.
+# Prevents the anti-pattern of running pytest from the main repo with
+# worktree test paths (imports the wrong code).
 #
-# Reads worktree_path from .pev-state.json. If .pev-state.json is
-# missing or has no worktree_path, the hook is a no-op.
+# Active ONLY when agent_type starts with "pev:" (a PEV subagent).
+# Reads worktree_path from .pev-state.json in the subagent's cwd.
 
 INPUT=$(cat)
+
+# Gate: PEV subagents only
+AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
+case "$AGENT_TYPE" in
+  pev:*) ;;
+  *) exit 0 ;;
+esac
 
 # Resolve .pev-state.json (lives at cwd root — set by EnterWorktree)
 PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
@@ -19,10 +26,8 @@ if [ ! -f "$STATE_FILE" ]; then
   exit 0
 fi
 
-# Read worktree path from state
 WORKTREE_PATH=$(jq -r '.worktree_path // empty' "$STATE_FILE" 2>/dev/null)
 
-# No worktree_path → no constraint → allow
 if [ -z "$WORKTREE_PATH" ]; then
   exit 0
 fi
@@ -36,38 +41,33 @@ normalize() {
   fi
 }
 
-# Resolve worktree to absolute path
 WORKTREE_PATH=$(normalize "$WORKTREE_PATH")
 WORKTREE_PATH=$(cd "$WORKTREE_PATH" 2>/dev/null && pwd -P)
 if [ -z "$WORKTREE_PATH" ]; then
   exit 0
 fi
 
-# Extract the Bash command
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
 
 if [ -z "$COMMAND" ]; then
   exit 0
 fi
 
-# Extract the cd target from the command.
+# Extract the cd target from the command start.
 # Matches: "cd /some/path && ...", "cd /some/path;", "cd /some/path"
 # Does NOT match: "git -C /path" (not a cd — ignore)
 CD_TARGET=$(echo "$COMMAND" | grep -oP '^\s*cd\s+\K[^\s;&]+' 2>/dev/null)
 
 if [ -z "$CD_TARGET" ]; then
-  # No cd at the start of the command → allow
   exit 0
 fi
 
-# Normalize and resolve cd target to absolute path
 CD_TARGET=$(normalize "$CD_TARGET")
 case "$CD_TARGET" in
-  /*) ;; # already absolute
+  /*) ;;
   *)  CD_TARGET="$(normalize "$(echo "$INPUT" | jq -r '.cwd // empty')")/$CD_TARGET" ;;
 esac
 
-# Normalize the cd target
 if [ -d "$CD_TARGET" ]; then
   CD_TARGET=$(cd "$CD_TARGET" && pwd -P)
 else

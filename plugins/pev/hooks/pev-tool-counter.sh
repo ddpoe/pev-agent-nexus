@@ -1,41 +1,42 @@
 #!/bin/bash
-# pev-tool-counter.sh — PostToolUse hook for PEV subagents
-# Increments the tool call counter and pushes advisory warnings.
-# Actual blocking is done by pev-tool-gate.sh (PreToolUse).
+# pev-tool-counter.sh — PostToolUse hook for PEV subagents.
+# Increments the tool call counter and pushes advisory warnings at
+# warn / urgent / limit thresholds. Actual blocking is handled by
+# pev-tool-gate.sh (PreToolUse).
 #
-# Args: <warn> <urgent> <limit>
-# Counter file path read from .pev-state.json (field: counter_file)
-# Falls back to /tmp/pev-tool-counter-spike if .pev-state.json missing.
+# Active ONLY when agent_type starts with "pev:". Budget thresholds
+# are dispatched on agent_type. Counter file is keyed on agent_id
+# (one counter per subagent invocation); cleaned up by pev-subagent-stop.sh.
 
-# Read hook input from stdin
 INPUT=$(cat)
 
-# Thresholds from positional args (defaults for spike testing)
-WARN=${1:-3}
-URGENT=${2:-6}
-LIMIT=${3:-10}
+AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
+AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // empty' 2>/dev/null)
 
-# Counter file from .pev-state.json (lives at cwd root — set by EnterWorktree)
-PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
-[ -z "$PROJECT_ROOT" ] && PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
-STATE_FILE="$PROJECT_ROOT/.pev-state.json"
-if [ -f "$STATE_FILE" ]; then
-  PEV_TOOL_COUNTER=$(jq -r '.counter_file // empty' "$STATE_FILE" 2>/dev/null)
-fi
-if [ -z "$PEV_TOOL_COUNTER" ]; then
-  PEV_TOOL_COUNTER="/tmp/pev-tool-counter-spike"
+# Dispatch thresholds on agent_type
+case "$AGENT_TYPE" in
+  pev:pev-architect)    WARN=50; URGENT=65; LIMIT=80  ;;
+  pev:pev-builder)      WARN=60; URGENT=85; LIMIT=100 ;;
+  pev:pev-reviewer)     WARN=50; URGENT=70; LIMIT=85  ;;
+  pev:pev-auditor)      WARN=45; URGENT=60; LIMIT=75  ;;
+  pev:pev-doc-reviewer) WARN=35; URGENT=50; LIMIT=60  ;;
+  pev:pev-spike)        WARN=3;  URGENT=5;  LIMIT=7   ;;
+  *) exit 0 ;;
+esac
+
+# Counter file keyed on agent_id (fall back to agent_type if missing)
+if [ -n "$AGENT_ID" ]; then
+  PEV_TOOL_COUNTER="/tmp/pev-counter-${AGENT_ID}.txt"
+else
+  PEV_TOOL_COUNTER="/tmp/pev-counter-${AGENT_TYPE//:/-}.txt"
 fi
 
-# Read current count (default 0 if file doesn't exist)
 COUNT=0
 if [ -f "$PEV_TOOL_COUNTER" ]; then
   COUNT=$(cat "$PEV_TOOL_COUNTER" 2>/dev/null || echo 0)
 fi
 
-# Increment
 COUNT=$((COUNT + 1))
-
-# Write back
 echo "$COUNT" > "$PEV_TOOL_COUNTER"
 
 # Push advisory warnings (blocking is handled by PreToolUse gate)

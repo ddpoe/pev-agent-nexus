@@ -53,8 +53,7 @@ Write to cwd (worktree root):
 {
   "cycle_id": "pev-spike",
   "cycle_doc_id": "cortex::docs.pev-cycles.pev-spike",
-  "worktree_path": "{worktree_path}",
-  "counter_file": "/tmp/pev-spike-test-1"
+  "worktree_path": "{worktree_path}"
 }
 ```
 

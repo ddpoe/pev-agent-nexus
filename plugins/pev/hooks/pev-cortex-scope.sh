@@ -1,29 +1,34 @@
 #!/bin/bash
-# pev-cortex-scope.sh — PreToolUse hook for PEV subagents
-# Enforces that cortex MCP tool calls use the worktree's project_root,
-# not the main repo. Reads worktree_path from .pev-state.json.
-# No-op when .pev-state.json is missing or has no worktree_path.
+# pev-cortex-scope.sh — PreToolUse hook for cortex MCP tools.
+# Enforces that cortex calls use the worktree's project_root, not the
+# main repo.
+#
+# Active ONLY when agent_type starts with "pev:" (a PEV subagent).
+# Reads worktree_path from .pev-state.json in the subagent's cwd.
 
 INPUT=$(cat)
 
-# Resolve .pev-state.json (lives at cwd root — set by EnterWorktree)
+# Gate: PEV subagents only
+AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
+case "$AGENT_TYPE" in
+  pev:*) ;;
+  *) exit 0 ;;
+esac
+
 PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
 [ -z "$PROJECT_ROOT" ] && PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
 STATE_FILE="$PROJECT_ROOT/.pev-state.json"
 
-# No state file → not in a PEV cycle → allow
 if [ ! -f "$STATE_FILE" ]; then
   exit 0
 fi
 
 WORKTREE_PATH=$(jq -r '.worktree_path // empty' "$STATE_FILE" 2>/dev/null)
 
-# No worktree_path → no constraint → allow
 if [ -z "$WORKTREE_PATH" ]; then
   exit 0
 fi
 
-# Normalize to POSIX format (Windows paths: C:/... → /c/...)
 normalize() {
   if command -v cygpath >/dev/null 2>&1; then
     cygpath -u "$1"
@@ -32,7 +37,6 @@ normalize() {
   fi
 }
 
-# Resolve worktree to absolute canonical path
 WORKTREE_PATH=$(normalize "$WORKTREE_PATH")
 WORKTREE_PATH=$(cd "$WORKTREE_PATH" 2>/dev/null && pwd -P)
 if [ -z "$WORKTREE_PATH" ]; then
@@ -40,16 +44,13 @@ if [ -z "$WORKTREE_PATH" ]; then
   exit 2
 fi
 
-# Extract project_root from the cortex tool input
 TOOL_PROJECT_ROOT=$(echo "$INPUT" | jq -r '.tool_input.project_root // empty' 2>/dev/null)
 
 if [ -z "$TOOL_PROJECT_ROOT" ]; then
-  # No project_root in tool input — block (cortex tools require it)
   echo "BLOCKED: cortex tool call missing project_root parameter" >&2
   exit 2
 fi
 
-# Resolve to absolute canonical path
 TOOL_PROJECT_ROOT=$(normalize "$TOOL_PROJECT_ROOT")
 if [ -d "$TOOL_PROJECT_ROOT" ]; then
   TOOL_PROJECT_ROOT=$(cd "$TOOL_PROJECT_ROOT" && pwd -P)
@@ -58,7 +59,6 @@ else
   exit 2
 fi
 
-# Check: must match worktree path exactly
 if [ "$TOOL_PROJECT_ROOT" = "$WORKTREE_PATH" ]; then
   exit 0
 fi

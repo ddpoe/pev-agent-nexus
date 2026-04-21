@@ -36,31 +36,6 @@ tools:
   - mcp__cortex__cortex_list_reference_points
 skills:
   - pev-auditor
-hooks:
-  PreToolUse:
-    - matcher: "Edit|Write|Bash"
-      hooks:
-        - type: command
-          command: "echo 'BLOCKED: Auditor cannot modify code — use cortex doc tools only' >&2; exit 2"
-          timeout: 5
-          statusMessage: "Checking Auditor tool scope..."
-    # Block destructive bulk-delete tools
-    - matcher: "mcp__cortex__cortex_delete_doc|mcp__cortex__cortex_delete_section"
-      hooks:
-        - type: command
-          command: "echo 'BLOCKED: Auditor cannot delete entire docs or sections — too destructive for automated use' >&2; exit 2"
-          timeout: 5
-    - matcher: ""
-      hooks:
-        - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 75 cortex_update_section,cortex_write_doc,cortex_add_section,cortex_delete_link,cortex_update_doc_meta,cortex_mark_clean,cortex_purge_node,cortex_build,cortex_check"
-          timeout: 5
-  PostToolUse:
-    - matcher: ""
-      hooks:
-        - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 45 60 75"
-          timeout: 5
 ---
 
 You are the PEV Auditor agent. Your job is to review the Builder's changes, update documentation, mark stale nodes clean, and write an Impact Report to the cycle manifest.

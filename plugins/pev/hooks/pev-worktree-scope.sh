@@ -1,11 +1,19 @@
 #!/bin/bash
-# pev-worktree-scope.sh — PreToolUse hook for PEV subagents
+# pev-worktree-scope.sh — PreToolUse(Write|Edit) hook for PEV subagents.
 # Enforces that Write/Edit calls target only files inside the worktree.
-# Reads worktree_path from .pev-state.json. If .pev-state.json is
-# missing or has no worktree_path, the hook is a no-op (allows
-# non-PEV sessions to work without interference).
+#
+# Active ONLY when agent_type starts with "pev:" (i.e., a PEV subagent is
+# executing the tool call — not the orchestrator or other plugins' agents).
+# Reads worktree_path from .pev-state.json in the subagent's cwd.
 
 INPUT=$(cat)
+
+# Gate: PEV subagents only
+AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
+case "$AGENT_TYPE" in
+  pev:*) ;;
+  *) exit 0 ;;
+esac
 
 # Resolve .pev-state.json (lives at cwd root — set by EnterWorktree)
 PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
@@ -38,7 +46,6 @@ normalize() {
 WORKTREE_PATH=$(normalize "$WORKTREE_PATH")
 WORKTREE_PATH=$(cd "$WORKTREE_PATH" 2>/dev/null && pwd -P)
 if [ -z "$WORKTREE_PATH" ]; then
-  # Worktree path doesn't exist on disk — block to be safe
   echo "BLOCKED: worktree_path in pev-state.json does not exist on disk" >&2
   exit 2
 fi
@@ -47,11 +54,10 @@ fi
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
 
 if [ -z "$FILE_PATH" ]; then
-  # No file_path in tool input (shouldn't happen for Write/Edit) — allow
   exit 0
 fi
 
-# Normalize to POSIX format (Windows paths: C:/... → /c/...)
+# Normalize to POSIX format
 FILE_PATH=$(normalize "$FILE_PATH")
 
 # Resolve file_path to absolute (it may already be absolute)
@@ -66,7 +72,6 @@ FILE_BASE=$(basename "$FILE_PATH")
 if [ -d "$FILE_DIR" ]; then
   FILE_PATH="$(cd "$FILE_DIR" && pwd -P)/$FILE_BASE"
 else
-  # Directory doesn't exist yet (Write creating new file) — check parent chain
   CHECK_DIR="$FILE_DIR"
   while [ ! -d "$CHECK_DIR" ] && [ "$CHECK_DIR" != "/" ]; do
     CHECK_DIR=$(dirname "$CHECK_DIR")
@@ -80,14 +85,8 @@ fi
 
 # Check: file_path must start with worktree_path
 case "$FILE_PATH" in
-  "$WORKTREE_PATH"/*)
-    # Inside worktree — allow
-    exit 0
-    ;;
-  "$WORKTREE_PATH")
-    # Exact match (unlikely for a file) — allow
-    exit 0
-    ;;
+  "$WORKTREE_PATH"/*) exit 0 ;;
+  "$WORKTREE_PATH")   exit 0 ;;
   *)
     echo "BLOCKED: Write/Edit target '$FILE_PATH' is outside the worktree '$WORKTREE_PATH'" >&2
     exit 2

@@ -18,7 +18,7 @@ Worktree path: `.claude/worktrees/{cycle-id}`
 
 Branch name: `worktree-{cycle-id}`
 
-Cortex doc ID: `cortex::docs.pev-cycles.{cycle-id}` — the project prefix comes from `cortex.toml` (`project_id = "cortex"`), which is a tracked file present in both the main repo and worktrees. All cortex tools use this consistent prefix.
+Cortex doc ID: `{project_id}::docs.pev-cycles.{cycle-id}` — the `{project_id}` prefix MUST be read from `cortex.toml` (`project_id` field) at runtime. Do NOT hardcode it. Read `cortex.toml` in the project root and extract the `project_id` value. Example: if `project_id = "pm_mvp"`, the doc ID is `pm_mvp::docs.pev-cycles.{cycle-id}`.
 
 ## Manifest Creation
 
@@ -47,13 +47,13 @@ Required values to fill:
 - `auditor.change-ledger`: Filled by Auditor as it works
 - `auditor.impact-report`: Filled by Orchestrator from Auditor return
 
-After writing, the doc is indexed as `cortex::docs.pev-cycles.{cycle-id}`. Store this as `cycle_doc_id` in `.pev-state.json`.
+After writing, the doc is indexed as `{project_id}::docs.pev-cycles.{cycle-id}`. Store this as `cycle_doc_id` in `.pev-state.json`.
 
 All other sections start with placeholder content — Architect, Builder, and Auditor fill them.
 
 ## State File
 
-Write `.pev-state.json` to the **worktree root** (the cwd after `EnterWorktree`) before each subagent dispatch. The doc-scope, cortex-scope, worktree-scope, and tool-budget hooks all find this file by reading the `cwd` field from their input and locating `.pev-state.json` at that root.
+Write `.pev-state.json` to the **worktree root** (the cwd after `EnterWorktree`) once per cycle, before the first subagent dispatch. The doc-scope, cortex-scope, and worktree-scope hooks all find this file by reading the `cwd` field from their input and locating `.pev-state.json` at that root. The file does NOT need to be rewritten between phases — hooks dispatch per-agent behavior on the `agent_type` field in hook input, not on state.
 
 For the **Auditor phase only** (runs on main after worktree is removed), write `.pev-state.json` to the **main repo root**. This is a serial mutex — check for an existing `.pev-state.json` on main before writing (see Auditor Mutex section).
 
@@ -62,17 +62,14 @@ Format:
 {
   "cycle_id": "{cycle-id}",
   "cycle_doc_id": "{cycle_doc_id}",
-  "worktree_path": "{absolute-path-to-worktree}",
-  "counter_file": "/tmp/pev-{cycle-id}-{agent}-{incarnation}"
+  "worktree_path": "{absolute-path-to-worktree}"
 }
 ```
 
-- `cycle_doc_id`: the full cortex doc ID for the cycle manifest: `cortex::docs.pev-cycles.{cycle-id}`. The `cortex` prefix comes from `cortex.toml` (`project_id`). All dispatch prompts and hooks use this value.
+- `cycle_doc_id`: the full cortex doc ID for the cycle manifest: `{project_id}::docs.pev-cycles.{cycle-id}`. The `{project_id}` MUST be read from `cortex.toml` at runtime — it varies per project. All dispatch prompts and hooks use this value.
 - `worktree_path`: absolute path to the worktree created in Phase 1. Builder and Reviewer receive this — hooks use it to scope Write/Edit, Bash, and cortex `project_root` calls. Not used for Auditor (runs on main).
-- `{agent}`: `architect`, `builder`, `reviewer`, `auditor`, or `doc-reviewer`
-- `{incarnation}`: starts at 1, increments per re-dispatch
-- A fresh counter_file path (file doesn't exist yet) starts at 0 automatically — no explicit reset needed
-- Use the Write tool to create this file
+- Tool-budget counters are keyed on the subagent's `agent_id` (read by hooks from stdin JSON) at `/tmp/pev-counter-<agent_id>.txt`. Files are auto-created on first increment and auto-deleted by the `SubagentStop` hook. No counter_file field needed in state.
+- Use the Write tool to create this file.
 
 ## Auditor Mutex
 
@@ -455,7 +452,7 @@ Architect: {scope summary}
 Builder: {implementation summary}
 Auditor: {audit summary — nodes reviewed, docs updated}
 
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 EOF
 )"
 ```
