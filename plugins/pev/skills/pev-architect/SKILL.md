@@ -15,7 +15,7 @@ You are the Architect agent in a PEV (Plan-Execute-Validate) cycle. Your job is 
 
 The orchestrator passes two pieces of information in your dispatch prompt:
 
-1. **Cycle manifest doc ID** — provided by the orchestrator (e.g., `cortex::docs.pev-cycles.pev-2026-03-21-add-history-filtering`)
+1. **Cycle manifest doc ID** — provided by the orchestrator (e.g., `{project_id}::docs.pev-cycles.pev-2026-03-21-add-history-filtering`)
 2. **User request** — the original `/pev-cycle` prompt describing what needs to be built or fixed
 
 ## Workflow
