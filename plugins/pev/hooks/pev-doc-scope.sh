@@ -8,6 +8,8 @@
 
 INPUT=$(cat)
 
+echo "[$(date -Is 2>/dev/null || echo now)] hook=doc-scope pid=$$ agent_type=$(echo "$INPUT" | jq -r '.agent_type // "<empty>"' 2>/dev/null) tool=$(echo "$INPUT" | jq -r '.tool_name // "<empty>"' 2>/dev/null) event=$(echo "$INPUT" | jq -r '.hook_event_name // "<empty>"' 2>/dev/null)" >> /tmp/pev-hook-debug.log 2>/dev/null
+
 # Gate: PEV subagents only
 AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
 case "$AGENT_TYPE" in
