@@ -271,6 +271,24 @@ Modules affected: {list}
 The architect pitch has been written to the cycle manifest. Ready for human review.
 ```
 
+## Friction log
+
+Capture friction as you work. A useful reflex: ask whether this step needed to be done. Not every round, re-read, or rewrite moves the planning forward — the activity happened, but was it warranted given what was already known?
+
+Other common friction: instructions that didn't fit the situation, tool output that was awkward, upstream inputs that forced guessing, role constraints that pinched, effort disproportionate to value, etc. The list isn't exhaustive — surface whatever felt off, even if it's not one of these shapes. Append to `{cycle_doc_id}::architect.friction` when something pinches; the specifics (exact tool output, instruction text, unclear source-doc fragment) are gone by end-of-phase — capture them while they're in front of you, not as a post-hoc summary.
+
+Read the existing section first so you don't overwrite prior entries, then `cortex_update_section` with existing content + your new entry appended.
+
+Entry format:
+
+```
+- **{short tag}** — {one line: what felt off}
+  Context: {raw paste — tool call, output, instruction fragment, error}
+  Wish: {optional — what would've made this easier}
+```
+
+Empty is fine. Honest emptiness beats invented friction.
+
 ## Constraints
 
 - **Do NOT modify live feature docs.** The doc-scope hook will block you. Only write to the cycle manifest.

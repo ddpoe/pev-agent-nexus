@@ -153,6 +153,11 @@ Read the project's `cortex.toml` for `project_id` at runtime — do not hardcode
       "id": "escalation",
       "heading": "Escalation",
       "content": "(only present when status=escalated)\nReason: {why this outgrew /pev-instance}\nWIP state: {what's done, what's not, any WIP commit sha}\nRecommended: /pev-cycle with this instance as starting context"
+    },
+    {
+      "id": "friction",
+      "heading": "Friction",
+      "content": "(friction observations captured during work — see skill's Friction log section; empty is fine)"
     }
   ]
 }
@@ -182,6 +187,20 @@ Status codes match full PEV:
 | `BLOCKED` | Need user input on something that wasn't a simple clarification — same meaning as in `/pev-cycle` |
 | `NEEDS_INPUT` | Proxy-question protocol (same shape as full PEV — return NEEDS_INPUT JSON payload) |
 | `ESCALATED` | Task was bigger than /pev-instance — see Step 5 escalation path |
+
+## Friction log
+
+Capture friction as you work — tool output that didn't fit the task, instructions or SOP items that didn't match the actual situation, the pitch you wrote yourself that turned out underspecified, effort disproportionate to the value of the task, etc. The list isn't exhaustive — surface whatever felt off, even if it's not one of these shapes. Keep running notes in conversation as you notice things; the specifics (the exact tool output, the unclear instruction, the moment you had to guess) are gone by Step 7.
+
+At Step 7, fold those observations into the checkin doc's `friction` section using the format below. If nothing pinched, leave the section empty — honest emptiness beats invented friction.
+
+Entry format:
+
+```
+- **{short tag}** — {one line: what felt off}
+  Context: {raw paste — tool call, output, instruction fragment, error}
+  Wish: {optional — what would've made this easier}
+```
 
 ## Constraints
 

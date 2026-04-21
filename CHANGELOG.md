@@ -8,6 +8,12 @@ Versions loosely follow [Semantic Versioning](https://semver.org/) — major bum
 
 Nothing pending.
 
+## [2.2.0] — 2026-04-21
+
+### Added
+- **Friction logs** — each phase-agent (Architect, Builder, Reviewer, Auditor, Doc Reviewer) and the orchestrator now owns a `{agent}.friction` section in the cycle manifest. Agents append in-the-moment observations when something pinches during work — instructions that didn't fit the situation, tool output that was awkward, role constraints that forced workarounds, upstream inputs that required guessing, effort disproportionate to value. Initiative-based (not gated), append-as-you-go (not post-hoc summary). Entries follow a short-tag + raw-context-paste format documented in each skill. Empty sections are expected and acceptable — value compounds across cycles as `cortex_search` surfaces recurring tags. `/pev-instance` carries the same mechanism via a `friction` section in the checkin doc scaffold.
+- `USER_GUIDE.md` §Friction logs — how to surface patterns via `cortex_search`, recommended read cadence, and the distinction between `decisions` / `builder.deviations` / `{agent}.friction` as three overlapping-but-distinct accumulating sections.
+
 ## [2.1.3] — 2026-04-21
 
 ### Fixed

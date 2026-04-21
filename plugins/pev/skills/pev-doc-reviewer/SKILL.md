@@ -180,6 +180,22 @@ If the doc-topology doesn't describe how to handle a category you encounter, or 
 
 Do NOT guess when a guide section is ambiguous — surface it.
 
+## Friction log
+
+Capture friction as you work — upstream inputs (topology guide, Auditor ledger) that didn't give you the signal the check needed, pass instructions that didn't fit the actual doc shape, role constraints that pinched, effort disproportionate to value, etc. The list isn't exhaustive — surface whatever felt off, even if it's not one of these shapes. Append to `{cycle_doc_id}::doc-review.friction` when something pinches; the specifics (the ambiguous trigger, the ledger entry that didn't match reality, the drift signal that was hard to evaluate) are gone by end-of-phase.
+
+Read the existing section first so you don't overwrite prior entries, then `cortex_update_section` with existing + new.
+
+Entry format:
+
+```
+- **{short tag}** — {one line: what felt off}
+  Context: {raw paste — tool call, output, instruction fragment, error}
+  Wish: {optional — what would've made this easier}
+```
+
+Empty is fine. Honest emptiness beats invented friction.
+
 ## Constraints
 
 - **Do NOT modify docs.** Only `cortex_update_section` to the cycle manifest is allowed.

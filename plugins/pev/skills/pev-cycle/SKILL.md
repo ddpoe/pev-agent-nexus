@@ -201,6 +201,22 @@ This writes `docs/pev/cycles/{cycle-id}-efficiency.json` and prints a verdict. P
 
 Clean up state file (`rm -f .pev-state.json` from main repo root — last written for the Doc Reviewer). Invoke `superpowers:finishing-a-development-branch`. Do NOT invoke `superpowers:requesting-code-review` — the PEV Reviewer (Phase 5) already covered spec compliance, functionality preservation, and code quality.
 
+## Friction log
+
+Capture friction as you work — subagent dispatch and return edges, phase-transition steps that didn't fit the situation, human-gate interactions that felt clunky, tool or hook behavior that surprised you, orchestration gaps this skill didn't cover, effort disproportionate to value, etc. The list isn't exhaustive — surface whatever felt off, even if it's not one of these shapes. Append to `{cycle_doc_id}::orchestrator.friction` when something pinches — not as a Phase 8 summary, but as you notice it. The specifics (the exact error, the unexpected output, the user exchange) are gone if you wait.
+
+Read the existing section first so you don't overwrite prior entries, then `cortex_update_section` with existing + new.
+
+Entry format:
+
+```
+- **{short tag}** — {one line: what felt off}
+  Context: {raw paste — tool call, output, error, user exchange}
+  Wish: {optional — what would've made this easier}
+```
+
+Empty is fine. Honest emptiness beats invented friction.
+
 ## Error Handling
 
 - **Agent dispatch failure**: Check `.claude/agents/pev-{agent}.md` exists; suggest `/agents` to reload.

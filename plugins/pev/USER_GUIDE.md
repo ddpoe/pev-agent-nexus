@@ -183,6 +183,47 @@ removed. Total: ~20 minutes of wall time, three human approvals.
 
 `/pev-instance` sessions usually wrap in 5–10 minutes.
 
+## Friction logs
+
+Every PEV agent and the orchestrator maintain a `{agent}.friction` section in the cycle manifest where they append in-the-moment observations when something pinches — instructions that didn't fit the situation, tool output that was awkward, upstream inputs that forced guessing, role constraints that felt mispriced, effort disproportionate to value.
+
+Where to find them:
+
+- `{cycle_doc_id}::architect.friction`
+- `{cycle_doc_id}::builder.friction`
+- `{cycle_doc_id}::reviewer.friction`
+- `{cycle_doc_id}::auditor.friction`
+- `{cycle_doc_id}::doc-review.friction`
+- `{cycle_doc_id}::orchestrator.friction`
+
+For `/pev-instance` runs, friction lives in the checkin doc's `friction` section.
+
+**Expected to be empty most of the time.** Agents capture only when something genuinely pinches; they do not invent friction to look thorough. A cycle with empty friction sections is a clean cycle, not a silent one.
+
+**How to use the logs.** The compounding value comes from patterns across cycles, not any single entry:
+
+```bash
+# Surface recurring friction across all cycles
+cortex_search "friction"
+
+# Filter by tag for a specific friction type
+cortex_search "cortex-staleness"
+cortex_search "instruction-ambiguity"
+cortex_search "role-pinch"
+```
+
+Plan a periodic `/pev-instance` (or `/pev-cycle`) whose input is "read the last N cycles' friction logs, cluster the entries, propose skill or tool changes." Without a committed read cadence the logs decay to write-only telemetry — the patterns are only valuable if somebody reads them.
+
+**Friction vs decisions vs deviations.** The cycle manifest has three overlapping-but-distinct accumulating sections:
+
+| Section | Shape | Purpose |
+|---|---|---|
+| `decisions` | "What was chosen, alternatives considered, why" | Durable record of design choices for future-you or the next cycle to reference |
+| `builder.deviations` | "Plan said X, I did Y, because Z" | Structured Builder-vs-Architect delta, used by the Reviewer's deviation tribunal |
+| `{agent}.friction` | "This felt hard or off, here's what I was looking at" | Phenomenological signal about skill/tool/process quality, consumed by periodic meta-review |
+
+If you're not sure where something goes: decisions for durable choices, deviations for plan divergence, friction for "this was harder than it should have been."
+
 ## Troubleshooting
 
 If agents seem to behave inconsistently or hooks appear silent:

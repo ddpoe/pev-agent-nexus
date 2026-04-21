@@ -121,8 +121,19 @@ Written to `docs/pev/cycles/<cycle-id>.json`. Sections:
 | `auditor.change-ledger` | Auditor | Updated as Auditor works |
 | `auditor.impact-report` | Orchestrator (from Auditor return) | Validation complete |
 | `doc-review` | Orchestrator (from Doc Reviewer return) | Doc review complete |
+| `{agent}.friction` | Each agent + orchestrator | Append-as-you-go during each phase |
 
-`/pev-instance` writes a smaller analogous structure to `docs/pev/instances/<id>.json` (meta, problem, user-story, acceptance, changes, self-review, optional escalation).
+`/pev-instance` writes a smaller analogous structure to `docs/pev/instances/<id>.json` (meta, problem, user-story, acceptance, changes, self-review, optional escalation, friction).
+
+### Friction logs
+
+Each phase-agent (Architect, Builder, Reviewer, Auditor, Doc Reviewer) and the orchestrator owns a `{agent}.friction` section in the cycle manifest. Agents append observations when something pinches during work — instructions that didn't fit the situation, tool output that was awkward, role constraints that forced workarounds, upstream inputs that required guessing, effort disproportionate to value.
+
+This is distinct from the `decisions` log (cycle-wide record of what was chosen and why) and from `builder.deviations` (structured Builder-vs-plan delta). Friction is phenomenological: what was hard or felt off, regardless of whether the agent deviated.
+
+Entries follow a short-tag + raw-context-paste format documented in each skill and in the cycle-manifest template's `friction-logs` section. Initiative-based, not gated — agents capture in-the-moment or not at all. Empty sections are expected and acceptable; the value compounds across cycles as `cortex_search` surfaces recurring tags (e.g., `cortex-staleness`, `instruction-ambiguity`, `role-pinch`) that drive skill and tool evolution.
+
+Sections are created lazily on first write via `cortex_update_section` — same pattern as `reviewer.progress`, `builder.build-plan`, and `auditor.change-ledger`.
 
 ## Agent responsibilities (one-line each)
 

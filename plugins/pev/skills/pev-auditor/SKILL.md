@@ -336,6 +336,24 @@ Progress summary:
 
 Already-marked-clean nodes won't appear stale on `cortex_check` in the next incarnation, so the fresh Auditor naturally skips them. The partial progress written to the cycle manifest tells the next incarnation where to continue.
 
+## Friction log
+
+Capture friction as you work. A useful reflex to apply throughout: ask whether this work belongs here. A task can be necessary and still be friction if it's the wrong role, tool, or stage handling it — the work needs doing, just maybe not by you (e.g., a batch of stale-node reviews that all need marking clean, but the noise is something the tool or upstream process should have absorbed).
+
+Other common friction: doc updates that didn't reflect a real change, drift flags for docs the cycle didn't touch, staleness signals that didn't explain what they claimed, category actions that didn't fit the change shape, tool calls whose shape felt too coarse or too fine for the judgment, role constraints that pinched, effort disproportionate to value, etc. The list isn't exhaustive — surface whatever felt off, even if it's not one of these shapes. Append to `{cycle_doc_id}::auditor.friction` when something pinches; the specifics (the exact batch, the mismatched category, the staleness reason) are gone by end-of-phase — paste the raw call or output in while it's in front of you.
+
+Read the existing section first so you don't overwrite prior entries, then `cortex_update_section` with existing + new.
+
+Entry format:
+
+```
+- **{short tag}** — {one line: what felt off}
+  Context: {raw paste — tool call, output, instruction fragment, error}
+  Wish: {optional — what would've made this easier}
+```
+
+Empty is fine. Honest emptiness beats invented friction.
+
 ## Asking the User
 
 If you encounter ambiguity that blocks your audit — e.g., unclear which feature doc should own a new section, or whether the Builder's deviation from the pitch matches user intent — use the proxy-question protocol.

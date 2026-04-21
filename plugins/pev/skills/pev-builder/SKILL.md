@@ -248,6 +248,24 @@ Progress summary:
 
 The orchestrator dispatches a fresh Builder incarnation to the **same worktree**. Your code on disk IS the code state. Your build plan and progress in the cycle manifest IS the planning state — the fresh incarnation reads the manifest and knows exactly where to continue.
 
+## Friction log
+
+Capture friction as you work — upstream inputs that forced guessing, plan shapes that didn't match the code reality, tool output that was awkward, role constraints that pinched, effort disproportionate to value, etc. The list isn't exhaustive — surface whatever felt off, even if it's not one of these shapes. Append to `{cycle_doc_id}::builder.friction` when something pinches; the specifics (the unclear pitch fragment, the tool output, the instruction that didn't fit) are gone by end-of-phase.
+
+This is distinct from `builder.deviations` (structured "what I did differently from the plan, and why") and from the `decisions` log (cycle-wide record of what was chosen). Friction is "what was hard or felt off, regardless of whether I deviated" — an agent who followed the plan exactly may still have had to fight it.
+
+Read the existing section first so you don't overwrite prior entries, then `cortex_update_section` with existing + new.
+
+Entry format:
+
+```
+- **{short tag}** — {one line: what felt off}
+  Context: {raw paste — tool call, output, instruction fragment, error}
+  Wish: {optional — what would've made this easier}
+```
+
+Empty is fine. Honest emptiness beats invented friction.
+
 ## Constraints
 
 - **Commit before returning.** Stage and commit all changes (separate Bash calls: `git add -A` then `git commit -m "..."`) so the orchestrator can merge via `git merge`. The orchestrator owns the merge and final commit — your worktree commit is just a transport mechanism.

@@ -474,6 +474,24 @@ If you cannot complete all six passes in this incarnation, update `reviewer.prog
 
 The orchestrator writes this to the manifest and dispatches a fresh incarnation. The fresh incarnation reads `reviewer.progress` and skips completed passes.
 
+## Friction log
+
+Capture friction as you work — tool output that didn't fit the task at hand, upstream inputs that made a verdict hard to reach, pass instructions that didn't match the shape of what you were reviewing, role constraints that forced effort disproportionate to value, etc. The list isn't exhaustive — surface whatever felt off, even if it's not one of these shapes. Append to `{cycle_doc_id}::reviewer.friction` when something pinches; the specifics (the tool output, the awkward finding, the instruction fragment that didn't fit) are gone by end-of-phase.
+
+The read-only role constraint is itself worth reporting on when it pinches — not as a request to break role, just an observation about whether the constraint is priced correctly in a given situation.
+
+Read the existing section first so you don't overwrite prior entries, then `cortex_update_section` with existing + new.
+
+Entry format:
+
+```
+- **{short tag}** — {one line: what felt off}
+  Context: {raw paste — tool call, output, instruction fragment, error}
+  Wish: {optional — what would've made this easier}
+```
+
+Empty is fine. Honest emptiness beats invented friction.
+
 ## Guidelines
 
 - **Evidence over opinion**: Every verdict needs a file path, line number, or test name.
