@@ -66,6 +66,8 @@ else
   exit 2
 fi
 
+echo "[cortex-scope] compare TOOL_PROJECT_ROOT=[$TOOL_PROJECT_ROOT] WORKTREE_PATH=[$WORKTREE_PATH]" >> /tmp/pev-hook-debug.log 2>/dev/null
+
 if [ "$TOOL_PROJECT_ROOT" = "$WORKTREE_PATH" ]; then
   exit 0
 fi
