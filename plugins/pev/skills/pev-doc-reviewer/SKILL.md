@@ -34,18 +34,18 @@ Read the full manifest to understand:
 - **Auditor change ledger** — what docs were changed and why (the "what the Auditor touched")
 - **Auditor impact report** — summary of audit findings
 
-### Step 2: Load the project's doc-review-guide
+### Step 2: Load the project's doc-topology
 
 The project's documentation taxonomy lives in a per-project SOP. Read it:
 
 ```
-Read({project_root}/.pev/doc-review-guide.md)
+Read({project_root}/.pev/doc-topology.json)
 ```
 
 **Fallback:** if that file does not exist, read the plugin default:
 
 ```
-Read(${CLAUDE_PLUGIN_ROOT}/templates/doc-review-guide.md)
+Read(${CLAUDE_PLUGIN_ROOT}/templates/doc-topology.json)
 ```
 
 The guide tells you:
@@ -172,7 +172,7 @@ DOC-REVIEWER {status}
 
 ## Asking the User
 
-If the doc-review-guide doesn't describe how to handle a category you encounter, or if you find drift that requires judgment ("is this PRD item still in scope?"), use the proxy-question protocol:
+If the doc-topology doesn't describe how to handle a category you encounter, or if you find drift that requires judgment ("is this PRD item still in scope?"), use the proxy-question protocol:
 
 ```json
 {"status": "NEEDS_INPUT", "preamble": "...", "questions": [...], "context": "..."}

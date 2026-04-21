@@ -393,10 +393,12 @@ Some PEV behavior varies per project and shouldn't be hardcoded in the plugin �
 ```
 <project_root>/
   .pev/
-    doc-review-guide.md    ← Doc Reviewer reads this
-    test-policy.md         ← Architect, Builder, Reviewer read this
-    review-criteria.md     ← Reviewer reads this (optional)
+    doc-topology.json      ← Auditor (proactive updates) + Doc Reviewer (verification) read this
+    test-policy.json       ← Architect, Builder, Reviewer read this
+    review-criteria.json   ← Reviewer reads this (optional)
 ```
+
+All three are **DocJSON** format (as of v2.1.0) so cortex can index them when `.pev/` is added to the project's cortex paths. Earlier `.pev/*.md` files are no longer read — rename and wrap per the templates shipped at `${CLAUDE_PLUGIN_ROOT}/templates/`.
 
 ### Design principles
 
@@ -419,9 +421,9 @@ Read ${CLAUDE_PLUGIN_ROOT}/templates/<file>.md  — fallback if primary missing
 
 | File | Purpose | Used by |
 |---|---|---|
-| `doc-review-guide.md` | Project's doc taxonomy — categories, paths, review triggers, conventions | Doc Reviewer |
-| `test-policy.md` | Test tiers, annotation contract, coverage expectations, budget | Architect, Builder, Reviewer |
-| `review-criteria.md` (optional) | Project-specific code-review emphasis (logging conventions, anti-patterns) | Reviewer |
+| `doc-topology.json` | Project doc taxonomy — categories, triggers, auditor-action per category, doc-reviewer-check | Auditor (proactive updates), Doc Reviewer (verification) |
+| `test-policy.json` | Test tiers, annotation contract, coverage expectations, budget | Architect, Builder, Reviewer |
+| `review-criteria.json` (optional) | Project-specific code-review emphasis (logging conventions, anti-patterns) | Reviewer |
 
 ### Adding a new SOP
 
@@ -775,4 +777,5 @@ Useful for reasoning about regressions. If a symptom matches an earlier bug, che
 | 1.8.6 | #11 | Architect skill: fix stale `${CLAUDE_PROJECT_DIR}/.claude/templates/` path to plugin-scoped; loosen "As a developer" → "As a [user type]"; orchestrator pitch display now always includes the test plan. |
 | 1.9.0 | #12 | `.pev/` project SOP convention — per-project config for Doc Reviewer (taxonomy), Architect/Builder/Reviewer (test policy), Reviewer (criteria). Skills read project SOPs first, fall back to plugin templates. Doc Reviewer mandate rewritten as drift scanner for non-graph docs. |
 | 1.9.1 | #13 | Strip diagnostic `echo >> /tmp/pev-hook-debug.log` lines from every PEV hook. Hooks are stable; the per-invocation log was steady-state noise. See §8.3 for the recipe to re-enable when troubleshooting. |
-| 2.0.0 | this PR | Two shapes for PEV: `/pev-cycle` (full) and `/pev-instance` (slim). Cycle docs relocated from `docs/pev-cycles/` to `docs/pev/cycles/` so full cycles and instances share a tree. Reviewer Pass 5c framed `cortex_workflow_list(steps=true)` explicitly as a "developer-declared core mechanisms" signal used across passes. **Breaking change**: consumers with existing cycle history should move `docs/pev-cycles/` → `docs/pev/cycles/` and update any cortex doc references from `docs.pev-cycles.*` to `docs.pev.cycles.*`. |
+| 2.0.0 | #14 | Two shapes for PEV: `/pev-cycle` (full) and `/pev-instance` (slim). Cycle docs relocated from `docs/pev-cycles/` to `docs/pev/cycles/` so full cycles and instances share a tree. Reviewer Pass 5c framed `cortex_workflow_list(steps=true)` explicitly as a "developer-declared core mechanisms" signal used across passes. **Breaking change**: consumers with existing cycle history should move `docs/pev-cycles/` → `docs/pev/cycles/` and update any cortex doc references from `docs.pev-cycles.*` to `docs.pev.cycles.*`. |
+| 2.1.0 | this PR | `.pev/` SOPs converted to DocJSON format + `doc-review-guide.md` renamed to `doc-topology.json` with expanded schema (per-category `auditor-action` field). Auditor now reads the topology and proactively updates guide-listed doc categories. Doc Reviewer's role narrows to verifier + gap catcher. **Breaking change**: consumers must migrate `.pev/*.md` → `.pev/*.json` — copy the structure from `${CLAUDE_PLUGIN_ROOT}/templates/*.json`. |

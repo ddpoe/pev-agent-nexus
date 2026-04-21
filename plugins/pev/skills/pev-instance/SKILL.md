@@ -26,11 +26,11 @@ Proceed only on explicit user direction. If the user chooses (3), tell them how 
 
 Load the project SOPs the same way the full-cycle agents do. Each with plugin fallback:
 
-- Test policy: `${CLAUDE_PROJECT_DIR}/.pev/test-policy.md` → fallback `${CLAUDE_PLUGIN_ROOT}/templates/test-policy.md`
-- Review criteria (optional): `${CLAUDE_PROJECT_DIR}/.pev/review-criteria.md` → no fallback; absent means no project-specific rules
-- Doc review guide: `${CLAUDE_PROJECT_DIR}/.pev/doc-review-guide.md` → fallback `${CLAUDE_PLUGIN_ROOT}/templates/doc-review-guide.md`
+- Test policy: `${CLAUDE_PROJECT_DIR}/.pev/test-policy.json` → fallback `${CLAUDE_PLUGIN_ROOT}/templates/test-policy.json`
+- Review criteria (optional): `${CLAUDE_PROJECT_DIR}/.pev/review-criteria.json` → no fallback; absent means no project-specific rules
+- Doc review guide: `${CLAUDE_PROJECT_DIR}/.pev/doc-topology.json` → fallback `${CLAUDE_PLUGIN_ROOT}/templates/doc-topology.json`
 
-These are your reference for tier assignments (test-policy), code-quality emphasis (review-criteria), and doc-drift checks (doc-review-guide).
+These are your reference for tier assignments (test-policy), code-quality emphasis (review-criteria), and doc-drift checks (doc-topology).
 
 ### Step 3: Scope assessment + escalation signal
 
@@ -78,7 +78,7 @@ Compose the pitch in conversation (not a doc yet). Required sections, half-page 
 
 **Plan.**
 - Touch: {file path} — {what changes}
-- Tests: {N} test(s) at Tier {X} per .pev/test-policy.md, proving {acceptance criterion}
+- Tests: {N} test(s) at Tier {X} per .pev/test-policy.json, proving {acceptance criterion}
 - No changes to: {paths you'd expect might be affected but aren't — shows you've thought about scope}
 ```
 
@@ -98,9 +98,9 @@ Direct edits in the working tree (no worktree). Stay within the scope declared i
 Before writing the checkin, run through this checklist explicitly. This is non-optional — the whole point of `/pev-instance` vs `just do it` is that this step exists.
 
 - [ ] **Acceptance criteria met?** Re-read the acceptance list from the mini-pitch. For each, state how you verified (test name, command output, manual inspection).
-- [ ] **Test-policy compliance?** For each test added, verify its tier matches `.pev/test-policy.md` rules. Flag any mismatch.
-- [ ] **Review-criteria check?** If `.pev/review-criteria.md` exists, run through its project-specific checks on the changed code. Flag any violations with severity.
-- [ ] **Doc drift scan?** For each category in `.pev/doc-review-guide.md` whose trigger conditions match this change, list the docs in that category and note whether they need updating. Flag (don't fix) — updating feature docs is the Auditor's job in a full cycle, and `/pev-instance` doesn't run an Auditor. If you flag drift, recommend user run `/pev-cycle` next time to close the loop properly, or update docs manually.
+- [ ] **Test-policy compliance?** For each test added, verify its tier matches `.pev/test-policy.json` rules. Flag any mismatch.
+- [ ] **Review-criteria check?** If `.pev/review-criteria.json` exists, run through its project-specific checks on the changed code. Flag any violations with severity.
+- [ ] **Doc drift scan?** For each category in `.pev/doc-topology.json` whose trigger conditions match this change, list the docs in that category and note whether they need updating. Flag (don't fix) — updating feature docs is the Auditor's job in a full cycle, and `/pev-instance` doesn't run an Auditor. If you flag drift, recommend user run `/pev-cycle` next time to close the loop properly, or update docs manually.
 - [ ] **Workflow-marker check?** If the change touched a function that appears in `cortex_workflow_list(steps=true)`, verify the step markers still match the code behavior. Update them if needed (Builder responsibility, unlike full `/pev-cycle` where markers are Reviewer's to flag).
 - [ ] **Workflow taxonomy hygiene?** Also ask forward-looking: *did this change introduce a new function that should become a workflow?* Entry points (CLI handlers, MCP tools, API endpoints) or functions with ≥3 logical phases that would warrant a Tier 3 test are candidates. Flag any you see in the checkin — don't have to fix inline, but surface so the developer (or a future `/pev-cycle`) can fold in the annotation. This keeps the workflow taxonomy honest over many small cycles.
 - [ ] **Grepped for collateral?** Any other call sites, docs, or config files that reference the thing you changed?
@@ -147,7 +147,7 @@ Read the project's `cortex.toml` for `project_id` at runtime — do not hardcode
     {
       "id": "self-review",
       "heading": "Self-Review",
-      "content": "- [x] Acceptance met — verified via {test name / command}\n- [x] Test-policy tier correct per .pev/test-policy.md\n- [x] Review-criteria: no violations (or: flagged issue Y at severity Z)\n- [x] Doc drift: no affected categories (or: flagged PRD at docs/prd/foo.md — recommend /pev-cycle to update)\n- [x] Workflow markers: not applicable (or: updated Step(3) in foo() to match new behavior)\n- [x] Grepped collateral: no further call sites"
+      "content": "- [x] Acceptance met — verified via {test name / command}\n- [x] Test-policy tier correct per .pev/test-policy.json\n- [x] Review-criteria: no violations (or: flagged issue Y at severity Z)\n- [x] Doc drift: no affected categories (or: flagged PRD at docs/prd/foo.md — recommend /pev-cycle to update)\n- [x] Workflow markers: not applicable (or: updated Step(3) in foo() to match new behavior)\n- [x] Grepped collateral: no further call sites"
     },
     {
       "id": "escalation",
