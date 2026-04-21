@@ -13,8 +13,6 @@ INPUT=$(cat)
 AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
 AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // empty' 2>/dev/null)
 
-echo "[$(date -Is 2>/dev/null || echo now)] hook=subagent-stop pid=$$ agent_type=${AGENT_TYPE:-<empty>} agent_id=${AGENT_ID:-<empty>} event=$(echo "$INPUT" | jq -r '.hook_event_name // "<empty>"' 2>/dev/null)" >> /tmp/pev-hook-debug.log 2>/dev/null
-
 case "$AGENT_TYPE" in
   pev:*) ;;
   *) exit 0 ;;
