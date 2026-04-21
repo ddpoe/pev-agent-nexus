@@ -29,6 +29,9 @@ fi
 if [ "$AGENT_TYPE" = "pev:pev-builder" ]; then
   PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
   [ -z "$PROJECT_ROOT" ] && PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
+  if command -v cygpath >/dev/null 2>&1; then
+    PROJECT_ROOT=$(cygpath -u "$PROJECT_ROOT")
+  fi
   STATE_FILE="$PROJECT_ROOT/.pev-state.json"
 
   if [ -f "$STATE_FILE" ]; then
