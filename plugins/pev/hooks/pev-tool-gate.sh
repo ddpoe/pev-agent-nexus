@@ -12,8 +12,6 @@ AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
 AGENT_ID=$(echo "$INPUT" | jq -r '.agent_id // empty' 2>/dev/null)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
 
-echo "[$(date -Is 2>/dev/null || echo now)] hook=tool-gate pid=$$ agent_type=${AGENT_TYPE:-<empty>} agent_id=${AGENT_ID:-<empty>} tool=${TOOL_NAME:-<empty>} event=$(echo "$INPUT" | jq -r '.hook_event_name // "<empty>"' 2>/dev/null)" >> /tmp/pev-hook-debug.log 2>/dev/null
-
 # Dispatch limit + allowlist on agent_type. Allowlist is a regex-ready
 # pipe-separated string; tool names are matched by substring against it.
 case "$AGENT_TYPE" in

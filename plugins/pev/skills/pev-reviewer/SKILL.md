@@ -260,12 +260,35 @@ For each row in the Architect's test plan:
 | US-2 Tier 2: Severity ranking | test_severity_order | 2 | PARTIAL | Asserts ordering but not specific rank position |
 ```
 
-#### 5c. Workflow step markers
+#### 5c. Workflow step markers — and "core mechanism" signal
 
-Run `cortex_workflow_list` to find all `@workflow` and `@task` functions. For key multi-step functions (CLI commands, MCP tools, API endpoints with >3 logical steps):
-- Render at level 3: `cortex_render(node_id, level=3)` to see existing markers
-- Compare step sequence against current code via `cortex_source`
+Run `cortex_workflow_list(project_root="{worktree_path}", steps=true)` early in your review. The functions it returns are **developer-declared core mechanisms** — the code paths someone has invested effort to narrate with `@workflow` + `Step()` markers because they matter. This list is an authoritative signal for:
+
+- **Pass 4 severity** — a code-quality issue in a workflow-marked function usually ranks `important` or `critical`, not `minor`. The developer has explicitly flagged this code as load-bearing.
+- **Functionality preservation (Pass 3)** — if the Builder changed a workflow-marked function, scrutinize caller impact harder than you would for an unannotated internal helper.
+- **Escalation signal for slim cycles** — the `/pev-instance` skill uses this same list to decide whether a task is actually "small" or is touching core mechanisms. Consistent signal across both cycle shapes.
+
+For each workflow-marked function the Builder modified:
+- Render at level 3: `cortex_render(node_id="...", level=3)` to see existing step markers
+- Compare the step sequence against current code via `cortex_source`
 - Flag: missing steps, out-of-order steps, ghost steps (describe removed behavior), wrong marker types, minor steps outside loops
+- If the Builder changed the function's behavior without updating the step markers, that's a **Pass 5c failure**, not just a Pass 4 style note
+
+#### 5d. Workflow taxonomy hygiene — suggesting additions / modifications
+
+Pass 5c verifies existing markers still match the code. This pass looks **forward** — given what the Builder changed, should the workflow taxonomy itself evolve? Helps the project stay organized without the developer manually auditing markers over time.
+
+Three questions to ask of each change:
+
+1. **New core mechanism introduced?** For each Builder-added function that's an entry point (CLI command handler, MCP tool, API endpoint) or has ≥3 distinct logical phases, check whether it has `@workflow` + `Step()` markers. If a Tier 3 test is proposed for it (per the Architect's test plan), that's a strong signal it's stakeholder-recognizable — it almost certainly deserves workflow markers. Flag candidates with a short rationale: *"`create_snapshot` is a new CLI handler with 4 logical phases; consider adding `@workflow` + `Step()` — would match Tier 3 test `test_snapshot_roundtrip` already proposed."*
+
+2. **Existing mechanism extended?** For workflow-marked functions the Builder modified, ask: did the change add a new logical phase that deserves its own `Step()`? A change that still technically matches existing markers may have made them a worse narrative of what the function does. Flag: *"`build_index` gained an incremental-rebuild branch; the existing Steps 1–5 now miss the short-circuit path — consider adding a Step 1a or restructuring."*
+
+3. **Split candidate?** If a workflow-marked function grew meaningfully (~50%+ in code size, or added a concern not captured in its `purpose` string), it may deserve splitting into two workflows. *"`scan_module` now handles both symbol extraction and validates-edge emission; might split into `scan_symbols` + `scan_edges`."*
+
+**Severity guidance.** These are **hygiene suggestions**, not merge blockers. Use severity `minor` or `suggestion` — never `FAIL` a review solely on taxonomy hygiene; the code may be correct even with imperfect annotations. Surface them in the review output so the developer can decide whether to fold an update into this cycle or file a follow-up.
+
+The goal is cumulative: each cycle leaves the workflow taxonomy *at least as well-organized* as it found it. Over many cycles, this keeps `cortex_workflow_list(steps=true)` a reliable "these are the core mechanisms" signal for future Reviewers and `/pev-instance` escalation decisions.
 
 ## Persisting Progress
 

@@ -49,9 +49,9 @@ Capture baseline SHA (`git rev-parse HEAD`).
 
 Then `poetry install --no-root`, `cortex_checkout` to copy cortex DB. See ref: `worktree-commands`.
 
-Read `cortex.toml` in the project root to get the `project_id` value. The cycle doc ID is `{project_id}::docs.pev-cycles.{cycle-id}` — do NOT hardcode the prefix, it varies per project.
+Read `cortex.toml` in the project root to get the `project_id` value. The cycle doc ID is `{project_id}::docs.pev.cycles.{cycle-id}` — do NOT hardcode the prefix, it varies per project.
 
-**Write `.pev-state.json` to the worktree root** (cwd after `EnterWorktree`) — see ref: `state-file`. Include `worktree_path` and `cycle_doc_id` (`{project_id}::docs.pev-cycles.{cycle-id}`). Hooks read the `cwd` field from their input and find `.pev-state.json` at that root. Per-worktree state enables parallel PEV cycles. Tool-budget counters are keyed on the subagent's `agent_id` (from hook input) — no counter_file field needed.
+**Write `.pev-state.json` to the worktree root** (cwd after `EnterWorktree`) — see ref: `state-file`. Include `worktree_path` and `cycle_doc_id` (`{project_id}::docs.pev.cycles.{cycle-id}`). Hooks read the `cwd` field from their input and find `.pev-state.json` at that root. Per-worktree state enables parallel PEV cycles. Tool-budget counters are keyed on the subagent's `agent_id` (from hook input) — no counter_file field needed.
 
 Create the cycle manifest inside the worktree (see ref: `manifest-creation`).
 
@@ -191,7 +191,7 @@ Run efficiency analysis and present the compact summary (see ref: `completion-cl
 ```bash
 python scripts/analyze_pev_session.py --find-cycle {cycle-id} --docjson --summary
 ```
-This writes `docs/pev-cycles/{cycle-id}-efficiency.json` and prints a verdict. Present the summary to the user.
+This writes `docs/pev/cycles/{cycle-id}-efficiency.json` and prints a verdict. Present the summary to the user.
 
 Clean up state file (`rm -f .pev-state.json` from main repo root — last written for the Doc Reviewer). Invoke `superpowers:finishing-a-development-branch`. Do NOT invoke `superpowers:requesting-code-review` — the PEV Reviewer (Phase 5) already covered spec compliance, functionality preservation, and code quality.
 

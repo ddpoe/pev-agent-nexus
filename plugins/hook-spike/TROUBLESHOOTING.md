@@ -563,7 +563,7 @@ exit 2
 
 **Symptom:** You add `echo "debug: ..." >&2` to a hook. The subagent runs. You look at the transcript. The message is nowhere.
 
-**Fix:** Canary files, not stderr, are the authoritative signal. Write `echo "..." >> /tmp/pev-hook-debug.log` or a canary marker file. The v1.8.2 diagnostic pattern is the standard:
+**Fix:** Canary files, not stderr, are the authoritative signal. Write `echo "..." >> /tmp/pev-hook-debug.log` or a canary marker file. **See §8.3 for the full re-enable recipe** — it's the most common debugging technique for misbehaving hooks.
 
 ```bash
 echo "[$(date -Is)] hook=<name> pid=$$ agent_type=$AGENT_TYPE tool=$TOOL_NAME" >> /tmp/pev-hook-debug.log 2>/dev/null
@@ -603,6 +603,8 @@ echo "[$(date -Is)] hook=<name> pid=$$ agent_type=$AGENT_TYPE tool=$TOOL_NAME" >
 
 Concrete commands to diagnose a failing hook.
 
+> **If you're debugging a silent/misbehaving hook, jump straight to §8.3** — the invocation-trace recipe is the fastest way to see whether a hook is firing, what `agent_type` it received, and where in the script it exited.
+
 ### 8.1 Is the plugin hook firing at all?
 
 ```bash
@@ -625,15 +627,67 @@ cat /tmp/hook-spike/input-PreToolUse-<ToolName>.json | jq
 
 `hook-spike`'s hooks.json captures every PreToolUse(Bash), PreToolUse(Read), PostToolUse(Bash), SubagentStop, Stop stdin JSON to disk. Look for `agent_type`, `agent_id`, `tool_input`.
 
-### 8.3 Trace a specific PEV hook
+### 8.3 Trace a specific PEV hook — re-enabling invocation logging
 
-Add at the top of the hook script, BEFORE the agent_type gate:
+> **Important:** PEV hooks used to emit invocation traces to `/tmp/pev-hook-debug.log` during every run (added in v1.8.2 while the hook infrastructure was being shaken out). That instrumentation was **removed in v1.9.1** now that hooks are stable — the log was noise in steady-state use. This recipe restores it temporarily when you need to debug a misbehaving hook. **Reach for it whenever a hook seems silent** — if the log shows no entries for the expected hook, it never fired at all; if it shows entries but the hook still passed through, the bug is in the post-gate logic.
+
+**Setup (two minutes):**
+
+1. Pick the hook script you want to trace. Location: `~/.claude/plugins/cache/pev-agent-nexus/pev/<version>/hooks/<name>.sh`. On Windows git-bash: `/c/Users/<you>/.claude/plugins/cache/pev-agent-nexus/pev/<version>/hooks/<name>.sh`.
+
+2. Decide where to insert the echo line:
+
+| Hook script | Insert location |
+|---|---|
+| `pev-worktree-scope.sh`, `pev-bash-scope.sh`, `pev-doc-scope.sh`, `pev-cortex-scope.sh` | Right after `INPUT=$(cat)` and before the `# Gate: PEV subagents only` comment |
+| `pev-tool-counter.sh`, `pev-tool-gate.sh` | Right after the `AGENT_TYPE=...`, `AGENT_ID=...` (and `TOOL_NAME=...` for gate) extraction block |
+| `pev-subagent-stop.sh` | Right after `AGENT_TYPE=...`, `AGENT_ID=...` extraction |
+
+3. Insert the appropriate line — place it **before** the `case "$AGENT_TYPE" in pev:*) ;;` gate so you see invocations from non-PEV agents and the orchestrator too. Otherwise the hook exits 0 before logging and you won't see why.
+
+**Scope hooks** (before the agent_type gate reads `$INPUT`):
 
 ```bash
-echo "[$(date -Is)] hook=<name> pid=$$ agent_type=$(echo "$INPUT" | jq -r '.agent_type // \"<empty>\"') tool=$(echo "$INPUT" | jq -r '.tool_name // \"<empty>\"')" >> /tmp/pev-hook-debug.log 2>/dev/null
+echo "[$(date -Is 2>/dev/null || echo now)] hook=<name> pid=$$ agent_type=$(echo "$INPUT" | jq -r '.agent_type // "<empty>"' 2>/dev/null) tool=$(echo "$INPUT" | jq -r '.tool_name // "<empty>"' 2>/dev/null) event=$(echo "$INPUT" | jq -r '.hook_event_name // "<empty>"' 2>/dev/null)" >> /tmp/pev-hook-debug.log 2>/dev/null
 ```
 
-Run the scenario. `cat /tmp/pev-hook-debug.log` — you'll see every invocation, which tools they matched on, and what agent fired them.
+Replace `<name>` with the script's short name (e.g., `worktree-scope`).
+
+**tool-counter / tool-gate / subagent-stop** (AGENT_TYPE and AGENT_ID already extracted into variables — use them):
+
+```bash
+echo "[$(date -Is 2>/dev/null || echo now)] hook=<name> pid=$$ agent_type=${AGENT_TYPE:-<empty>} agent_id=${AGENT_ID:-<empty>} tool=${TOOL_NAME:-$(echo "$INPUT" | jq -r '.tool_name // "<empty>"' 2>/dev/null)} event=$(echo "$INPUT" | jq -r '.hook_event_name // "<empty>"' 2>/dev/null)" >> /tmp/pev-hook-debug.log 2>/dev/null
+```
+
+(For `subagent-stop`, drop the `tool=...` segment — there's no tool name for a SubagentStop event.)
+
+**Using the log:**
+
+```bash
+# Clear it before the run
+rm -f /tmp/pev-hook-debug.log
+
+# Run whatever scenario reproduces the problem
+MSYS_NO_PATHCONV=1 claude -p "/pev-spike" --dangerously-skip-permissions --no-session-persistence
+
+# Inspect
+cat /tmp/pev-hook-debug.log
+grep 'hook=bash-scope' /tmp/pev-hook-debug.log
+grep 'agent_type=pev:pev-builder' /tmp/pev-hook-debug.log
+```
+
+You'll see every hook invocation with its agent context, tool name, and event. A missing hook entry means the hook didn't fire at all (matcher miss, plugin not loaded, or gate exited 0 too early). An entry present but followed by no block means the post-gate logic has a bug.
+
+**Cleanup after debugging:**
+
+Remove the lines you added. Either manually, or since you're editing an installed plugin copy, you can force-reinstall:
+
+```bash
+claude plugin uninstall pev --scope=user
+claude plugin install pev@pev-agent-nexus
+```
+
+That resets the installed copy to the marketplace version (no debug lines). A future version of this plugin may ship a `PEV_DEBUG=1` env-var gate so this is a one-line flip — for now it's a manual edit.
 
 ### 8.4 Test a hook standalone with real input
 
@@ -718,5 +772,7 @@ Useful for reasoning about regressions. If a symptom matches an earlier bug, che
 | 1.8.3 | #6 | Pipe state file via `cat "$STATE_FILE" | jq …` — native Windows jq can't open `/c/` paths. |
 | 1.8.4 | #7 | `pev-bash-scope.sh` block path switched from stdout `hookSpecificOutput` JSON to stderr + `exit 2`. |
 | 1.8.5 | #8 | Replace `grep -oP` with POSIX `sed` (PCRE locale bug). Fix `cortex-scope` matcher `mcp__cortex__` → `mcp__cortex__.*` (full-string match). |
-
-The diagnostic logging from 1.8.2 is still present in every hook. Safe to strip in a future cleanup, but helpful to leave in place while the system is shaking out.
+| 1.8.6 | #11 | Architect skill: fix stale `${CLAUDE_PROJECT_DIR}/.claude/templates/` path to plugin-scoped; loosen "As a developer" → "As a [user type]"; orchestrator pitch display now always includes the test plan. |
+| 1.9.0 | #12 | `.pev/` project SOP convention — per-project config for Doc Reviewer (taxonomy), Architect/Builder/Reviewer (test policy), Reviewer (criteria). Skills read project SOPs first, fall back to plugin templates. Doc Reviewer mandate rewritten as drift scanner for non-graph docs. |
+| 1.9.1 | #13 | Strip diagnostic `echo >> /tmp/pev-hook-debug.log` lines from every PEV hook. Hooks are stable; the per-invocation log was steady-state noise. See §8.3 for the recipe to re-enable when troubleshooting. |
+| 2.0.0 | this PR | Two shapes for PEV: `/pev-cycle` (full) and `/pev-instance` (slim). Cycle docs relocated from `docs/pev-cycles/` to `docs/pev/cycles/` so full cycles and instances share a tree. Reviewer Pass 5c framed `cortex_workflow_list(steps=true)` explicitly as a "developer-declared core mechanisms" signal used across passes. **Breaking change**: consumers with existing cycle history should move `docs/pev-cycles/` → `docs/pev/cycles/` and update any cortex doc references from `docs.pev-cycles.*` to `docs.pev.cycles.*`. |

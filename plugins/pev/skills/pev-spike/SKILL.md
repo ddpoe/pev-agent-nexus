@@ -39,11 +39,11 @@ Create a minimal cortex doc for the spike so doc-scope has something to test aga
 ```
 cortex_write_doc(
   project_root="{worktree_path}",
-  doc_json='{"title": "PEV Spike Manifest", "id": "pev-cycles/pev-spike", "tags": ["pev-cycle", "pev-spike"], "sections": [{"id": "results", "heading": "Spike Results", "content": "(spike agent writes results here)"}]}'
+  doc_json='{"title": "PEV Spike Manifest", "id": "pev/cycles/pev-spike", "tags": ["pev-cycle", "pev-spike"], "sections": [{"id": "results", "heading": "Spike Results", "content": "(spike agent writes results here)"}]}'
 )
 ```
 
-The doc ID for state file is: `cortex::docs.pev-cycles.pev-spike`
+The doc ID for state file is: `cortex::docs.pev.cycles.pev-spike`
 
 ### 4. Write `.pev-state.json`
 
@@ -52,7 +52,7 @@ Write to cwd (worktree root):
 ```json
 {
   "cycle_id": "pev-spike",
-  "cycle_doc_id": "cortex::docs.pev-cycles.pev-spike",
+  "cycle_doc_id": "cortex::docs.pev.cycles.pev-spike",
   "worktree_path": "{worktree_path}"
 }
 ```
@@ -66,7 +66,7 @@ Dispatch prompt:
 ```
 You are the PEV Spike agent testing hook infrastructure for cycle pev-spike.
 
-Cycle manifest doc ID: cortex::docs.pev-cycles.pev-spike
+Cycle manifest doc ID: cortex::docs.pev.cycles.pev-spike
 Project root: {worktree_path}
 Main repo path: {main_repo_path}
 
@@ -98,7 +98,7 @@ Test 4 — doc-scope (block): Try to write to a doc that is NOT the cycle manife
   Record: blocked=true/false, hook_message
 
 Test 5 — doc-scope (allow): Write to the CORRECT cycle manifest.
-  Call: cortex_update_section(section_id="cortex::docs.pev-cycles.pev-spike::results", content="Spike test in progress...")
+  Call: cortex_update_section(section_id="cortex::docs.pev.cycles.pev-spike::results", content="Spike test in progress...")
   Expected: ALLOWED (this counts as tool call 1)
   Record: allowed=true/false
 
@@ -130,7 +130,7 @@ Test 8 — allowlist Write: Write the results file (Write IS on the allowlist).
   Record: allowed=true/false
 
 Test 9 — allowlist cortex_update_section: Write final results to the manifest.
-  Call: cortex_update_section(section_id="cortex::docs.pev-cycles.pev-spike::results", content=<formatted results summary>)
+  Call: cortex_update_section(section_id="cortex::docs.pev.cycles.pev-spike::results", content=<formatted results summary>)
   Expected: ALLOWED
   Record: allowed=true/false
 
@@ -212,7 +212,7 @@ If any tests failed, present the `hook_message` for each failure so the user can
 
 Remove the spike manifest doc:
 ```bash
-rm -f docs/pev-cycles/pev-spike.json
+rm -f docs/pev/cycles/pev-spike.json
 ```
 
 Clean up the worktree:

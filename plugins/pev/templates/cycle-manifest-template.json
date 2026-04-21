@@ -4,7 +4,7 @@
     {
       "id": "purpose",
       "heading": "Purpose",
-      "content": "This template is copied by the orchestrator when creating a new PEV cycle manifest at `docs/pev-cycles/{cycle-id}.json`. Each section contains instructions the agent replaces with real content. The orchestrator creates the doc from this template, fills `status` and `request`, then dispatches the Architect to fill `scope` and `architect`.\n\nCycle ID format: `pev-YYYY-MM-DD-{slugified-purpose}` (e.g., `pev-2026-03-21-add-history-filtering`). Slug: lowercase, hyphens, truncated to 40 chars. Orchestrator checks `docs/pev-cycles/` for collisions; appends `-2`, `-3` if needed."
+      "content": "This template is copied by the orchestrator when creating a new PEV cycle manifest at `docs/pev/cycles/{cycle-id}.json`. Each section contains instructions the agent replaces with real content. The orchestrator creates the doc from this template, fills `status` and `request`, then dispatches the Architect to fill `scope` and `architect`.\n\nCycle ID format: `pev-YYYY-MM-DD-{slugified-purpose}` (e.g., `pev-2026-03-21-add-history-filtering`). Slug: lowercase, hyphens, truncated to 40 chars. Orchestrator checks `docs/pev/cycles/` for collisions; appends `-2`, `-3` if needed."
     },
     {
       "id": "status",

@@ -15,7 +15,7 @@ You are the Auditor agent in a PEV (Plan-Execute-Validate) cycle. Your job is to
 
 The orchestrator passes two pieces of information in your dispatch prompt:
 
-1. **Cycle manifest doc ID** — provided by the orchestrator (e.g., `{project_id}::docs.pev-cycles.pev-2026-03-21-add-history-filtering`)
+1. **Cycle manifest doc ID** — provided by the orchestrator (e.g., `{project_id}::docs.pev.cycles.pev-2026-03-21-add-history-filtering`)
 2. **Project root** — the main repo path (the merge has already happened — you run on the live codebase)
 
 If this is a continuation (you were previously dispatched and returned `CONTINUING`), the orchestrator also passes a summary of your previous progress, including which nodes have already been reviewed.
