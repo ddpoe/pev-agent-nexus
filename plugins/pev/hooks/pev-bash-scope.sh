@@ -63,7 +63,9 @@ fi
 # Extract the cd target from the command start.
 # Matches: "cd /some/path && ...", "cd /some/path;", "cd /some/path"
 # Does NOT match: "git -C /path" (not a cd — ignore)
-CD_TARGET=$(echo "$COMMAND" | grep -oP '^\s*cd\s+\K[^\s;&]+' 2>/dev/null)
+# Use sed (POSIX) instead of grep -oP — PCRE requires UTF-8 locale which isn't
+# always available in hook execution environments.
+CD_TARGET=$(echo "$COMMAND" | sed -n 's/^[[:space:]]*cd[[:space:]]\+\([^[:space:];&]\+\).*/\1/p')
 
 if [ -z "$CD_TARGET" ]; then
   exit 0
