@@ -34,7 +34,7 @@ if [ ! -f "$STATE_FILE" ]; then
 fi
 
 # Read worktree path from state
-WORKTREE_PATH=$(jq -r '.worktree_path // empty' "$STATE_FILE" 2>/dev/null)
+WORKTREE_PATH=$(cat "$STATE_FILE" | jq -r '.worktree_path // empty' 2>/dev/null)
 
 # No worktree_path in state → no constraint to enforce → allow
 if [ -z "$WORKTREE_PATH" ]; then

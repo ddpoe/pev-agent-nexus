@@ -31,7 +31,7 @@ if [ ! -f "$STATE_FILE" ]; then
   exit 0
 fi
 
-CYCLE_DOC_ID=$(jq -r '.cycle_doc_id // ""' "$STATE_FILE" 2>/dev/null)
+CYCLE_DOC_ID=$(cat "$STATE_FILE" | jq -r '.cycle_doc_id // ""' 2>/dev/null)
 
 if [ -z "$CYCLE_DOC_ID" ]; then
   echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"block","permissionDecisionReason":"No cycle_doc_id in .pev-state.json — cannot verify doc scope"}}' >&2

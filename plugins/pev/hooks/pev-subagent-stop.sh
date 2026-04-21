@@ -37,7 +37,7 @@ if [ "$AGENT_TYPE" = "pev:pev-builder" ]; then
   STATE_FILE="$PROJECT_ROOT/.pev-state.json"
 
   if [ -f "$STATE_FILE" ]; then
-    WORKTREE_PATH=$(jq -r '.worktree_path // empty' "$STATE_FILE" 2>/dev/null)
+    WORKTREE_PATH=$(cat "$STATE_FILE" | jq -r '.worktree_path // empty' 2>/dev/null)
     if [ -n "$WORKTREE_PATH" ]; then
       if command -v cygpath >/dev/null 2>&1; then
         WORKTREE_PATH=$(cygpath -u "$WORKTREE_PATH")
