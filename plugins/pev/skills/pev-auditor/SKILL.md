@@ -62,9 +62,29 @@ Your review scope is determined empirically, not from the Architect's prediction
 
 ### Step 4: Review stale nodes
 
-Follow the Auditor Reference Protocol (`${CLAUDE_PROJECT_DIR}/.claude/templates/auditor-reference-protocol.md`) for the full checklist. (`${CLAUDE_PROJECT_DIR}/.claude` is the plugin's install directory — set by Claude Code automatically.) The key sections in order:
+Follow the Auditor Reference Protocol (`${CLAUDE_PLUGIN_ROOT}/templates/auditor-reference-protocol.md`) for the full checklist. The key sections in order:
 
-#### 4a. Post-Implementation Updates
+#### 4a.0. Project Doc Topology — proactive updates
+
+**Before the graph-linked doc updates below, read the project's doc topology and act on it.** The topology is the authoritative project doc taxonomy — your instructions for how to update documentation categories the cortex graph can't see.
+
+```
+Read({project_root}/.pev/doc-topology.json)   ← primary
+```
+
+If absent, fall back to `${CLAUDE_PLUGIN_ROOT}/templates/doc-topology.json` (the plugin default — generic starter categories). In either case parse the JSON.
+
+For each `category.*` section in the topology:
+
+1. **Evaluate the `Triggered by` condition** against this cycle's changes (Builder manifest + Architect pitch). If the trigger doesn't match, skip the category and note the skip in your change ledger.
+2. **If triggered, perform the `Auditor action`** verbatim — the section spells out what updates you're expected to make for this category. The topology is authored by the project owner; don't second-guess the actions.
+3. **Record every update in the change ledger** with `category` from the topology section ID (e.g., `category.prd`, `category.interface`) so the Doc Reviewer can verify each action downstream.
+
+The topology's `Doc Reviewer check` field is NOT your concern — it's the Doc Reviewer's post-verification checklist. You perform the action; they verify.
+
+After completing the topology pass, continue with the graph-linked feature-doc updates below.
+
+#### 4a. Post-Implementation Updates (graph-linked feature docs)
 
 Before the staleness review, perform targeted doc updates and identify doc gaps. **Start by discovering which feature docs exist for the affected modules.**
 

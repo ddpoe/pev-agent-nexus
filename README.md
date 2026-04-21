@@ -19,11 +19,13 @@ Claude Code plugin marketplace with two plugins:
 
 The `pev` plugin reads three optional project-level SOP files from `<project_root>/.pev/`:
 
-| File | What it configures |
-|---|---|
-| `doc-review-guide.md` | Doc Reviewer's taxonomy of doc categories + review triggers |
-| `test-policy.md` | Test tiers, annotation contract, coverage expectations |
-| `review-criteria.md` | Project-specific code-review emphasis (logging, anti-patterns) |
+| File | What it configures | Used by |
+|---|---|---|
+| `doc-topology.json` | Project doc taxonomy — categories, triggers, auditor-action per category, doc-reviewer-check | Auditor (proactive updates), Doc Reviewer (verification) |
+| `test-policy.json` | Test tiers, annotation contract, coverage expectations | Architect, Builder, Reviewer |
+| `review-criteria.json` | Project-specific code-review emphasis (logging, anti-patterns) | Reviewer |
+
+All three are **DocJSON** so cortex can index them — add `.pev/` to your `cortex.toml` index paths if you want `cortex_search` / `cortex_history` over your SOPs.
 
 If the files don't exist, the plugin uses its own defaults from `plugins/pev/templates/`. To customize, copy any template into your repo's `.pev/` directory and edit — the SOP files are git-tracked so worktrees pick them up automatically.
 

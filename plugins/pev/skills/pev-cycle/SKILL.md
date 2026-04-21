@@ -12,7 +12,13 @@ You coordinate a Plan-Execute-Validate cycle by dispatching subagents and managi
 
 **Reference:** For shell commands, templates, format specs, and dispatch prompts, read `${CLAUDE_PLUGIN_ROOT}/templates/pev-orchestrator-reference.md`.
 
-**Project SOPs:** Projects can customize per-cycle behavior via `${CLAUDE_PROJECT_DIR}/.pev/` — `doc-review-guide.md` (Doc Reviewer taxonomy), `test-policy.md` (test tiers & annotation contract), `review-criteria.md` (Reviewer emphasis, optional). Subagents read these from `{worktree_path}/.pev/` since worktrees check out the same tree. If a project file doesn't exist, the skills fall back to plugin-shipped templates at `${CLAUDE_PLUGIN_ROOT}/templates/`. See TROUBLESHOOTING.md §5.7 for the full convention.
+**Project SOPs:** Projects customize PEV behavior via DocJSON files in `${CLAUDE_PROJECT_DIR}/.pev/`:
+
+- `doc-topology.json` — project doc taxonomy (Auditor proactively updates per-category; Doc Reviewer verifies)
+- `test-policy.json` — test tiers, annotation contract, coverage expectations
+- `review-criteria.json` — Reviewer's project-specific emphasis (optional)
+
+Subagents read these from `{worktree_path}/.pev/` since worktrees check out the same tree. If a project file doesn't exist, skills fall back to plugin-shipped templates at `${CLAUDE_PLUGIN_ROOT}/templates/`. SOPs are DocJSON so `cortex_search` can index them if the project adds `.pev/` to its cortex index paths. See TROUBLESHOOTING.md §5.7 for the full convention.
 
 ## Git Command Convention
 
