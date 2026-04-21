@@ -386,6 +386,56 @@ The key design choices worth copying:
 
 ---
 
+## 5.7 Project SOPs — the `.pev/` convention
+
+Some PEV behavior varies per project and shouldn't be hardcoded in the plugin — doc taxonomies differ, test tiers differ, review emphasis differs. Those live in per-project SOP files under `<project_root>/.pev/`:
+
+```
+<project_root>/
+  .pev/
+    doc-review-guide.md    ← Doc Reviewer reads this
+    test-policy.md         ← Architect, Builder, Reviewer read this
+    review-criteria.md     ← Reviewer reads this (optional)
+```
+
+### Design principles
+
+- **Git-tracked, not gitignored.** Worktrees check out the same tree as main — git-tracking means every worktree has the file at `{worktree_path}/.pev/...` automatically, so subagents running in worktrees see it without any copy-on-checkout step.
+- **Plugin-shipped fallbacks.** Each SOP has a default at `${CLAUDE_PLUGIN_ROOT}/templates/<name>.md` that the skill reads if the project file doesn't exist. New projects work immediately; customization is opt-in.
+- **Read-only for the plugin.** Skills read but never write these files. The user maintains them manually.
+
+### Path resolution in skills
+
+Convention in every PEV skill that reads an SOP:
+
+```
+Read {worktree_path}/.pev/<file>.md        — primary
+Read ${CLAUDE_PLUGIN_ROOT}/templates/<file>.md  — fallback if primary missing
+```
+
+`{worktree_path}` is provided in each subagent's dispatch prompt. For the Auditor and Doc Reviewer (which run on main repo post-merge), substitute `${CLAUDE_PROJECT_DIR}` for `{worktree_path}`.
+
+### What goes in each SOP
+
+| File | Purpose | Used by |
+|---|---|---|
+| `doc-review-guide.md` | Project's doc taxonomy — categories, paths, review triggers, conventions | Doc Reviewer |
+| `test-policy.md` | Test tiers, annotation contract, coverage expectations, budget | Architect, Builder, Reviewer |
+| `review-criteria.md` (optional) | Project-specific code-review emphasis (logging conventions, anti-patterns) | Reviewer |
+
+### Adding a new SOP
+
+If a future skill needs project-specific config that doesn't fit the existing files:
+
+1. Create `plugins/pev/templates/<new-sop>.md` as the plugin-shipped default
+2. Update the relevant skill to read `{worktree_path}/.pev/<new-sop>.md` with fallback
+3. Document it in this section
+4. Update the TROUBLESHOOTING categories table above
+
+Don't grow individual SOP files past ~3 concerns — split into separate files when they diverge.
+
+---
+
 ## 6. Windows gotchas (explicit)
 
 The Windows + git-bash + native-jq stack has three layers of path handling, each with its own assumptions. Here's the list we hit.

@@ -226,7 +226,9 @@ For code that already had logging, check if the logging was updated to reflect t
 
 #### 5b. Test annotation audit (against Architect's test plan)
 
-Read the test annotation policy at `${CLAUDE_PROJECT_DIR}/.claude/templates/test-annotation-policy.md` for the tier decision rule. Then compare the Builder's actual tests against the Architect's `test-plan` table row by row.
+Read the project's test policy at `{worktree_path}/.pev/test-policy.md` for the tier decision rule and annotation contract — fall back to `${CLAUDE_PLUGIN_ROOT}/templates/test-policy.md` if the project file doesn't exist. Then compare the Builder's actual tests against the Architect's `test-plan` table row by row.
+
+**Also read the project's review criteria** at `{worktree_path}/.pev/review-criteria.md` if present — this file is optional but, when it exists, encodes project-specific emphasis (logging conventions, error-handling patterns, anti-patterns). Apply its checks in Pass 4 alongside generic code-quality review. Each finding takes the severity from the review-criteria file (`critical` / `important` / `minor`).
 
 **Test plan compliance — walk the Architect's table:**
 

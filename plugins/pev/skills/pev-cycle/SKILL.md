@@ -8,9 +8,11 @@ user-invocable: true
 
 You coordinate a Plan-Execute-Validate cycle by dispatching subagents and managing phase transitions through a cycle manifest document.
 
-`${CLAUDE_PROJECT_DIR}` is set by Claude Code to the project root directory. PEV files live under `${CLAUDE_PROJECT_DIR}/.claude/` (containing `agents/`, `hooks/`, `skills/`, and `templates/`).
+`${CLAUDE_PROJECT_DIR}` is the consumer project root. `${CLAUDE_PLUGIN_ROOT}` is the PEV plugin's install directory (contains `agents/`, `hooks/`, `skills/`, `templates/`).
 
-**Reference:** For shell commands, templates, format specs, and dispatch prompts, read `${CLAUDE_PROJECT_DIR}/.claude/templates/pev-orchestrator-reference.md`.
+**Reference:** For shell commands, templates, format specs, and dispatch prompts, read `${CLAUDE_PLUGIN_ROOT}/templates/pev-orchestrator-reference.md`.
+
+**Project SOPs:** Projects can customize per-cycle behavior via `${CLAUDE_PROJECT_DIR}/.pev/` — `doc-review-guide.md` (Doc Reviewer taxonomy), `test-policy.md` (test tiers & annotation contract), `review-criteria.md` (Reviewer emphasis, optional). Subagents read these from `{worktree_path}/.pev/` since worktrees check out the same tree. If a project file doesn't exist, the skills fall back to plugin-shipped templates at `${CLAUDE_PLUGIN_ROOT}/templates/`. See TROUBLESHOOTING.md §5.7 for the full convention.
 
 ## Git Command Convention
 

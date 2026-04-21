@@ -136,7 +136,7 @@ For each task in the build plan:
 
 **Test budget:** Follow the Architect's test budget guidance (typically 5-10 focused tests per subsystem change). Test behavior, not implementation details. If you find yourself past 15 tests for a single subsystem, you're likely testing too granularly.
 
-**Test plan and tiers:** The Architect's `test-plan` section proposes Tier 2 and Tier 3 tests linked to user stories. Use it as your guide — each row tells you what scenario to test, at what tier, and which acceptance criterion it proves. Read the test annotation policy at `${CLAUDE_PROJECT_DIR}/.claude/templates/test-annotation-policy.md` for the full tier decision rule and annotation syntax.
+**Test plan and tiers:** The Architect's `test-plan` section proposes Tier 2 and Tier 3 tests linked to user stories. Use it as your guide — each row tells you what scenario to test, at what tier, and which acceptance criterion it proves. Read the project's test policy at `{worktree_path}/.pev/test-policy.md` for the full tier decision rule and annotation syntax. Fall back to `${CLAUDE_PLUGIN_ROOT}/templates/test-policy.md` if the project file doesn't exist. The policy's tier table tells you exactly how to annotate each test.
 
 - **Tier 2** (`@workflow(purpose=...)`) — subsystem tests. The Architect proposes these for meaningful module-level scenarios. Implement them with a `purpose` string that matches the scenario described in the test plan.
 - **Tier 3** (`@workflow` + `Step()`) — E2E user-story-level scenarios. The Architect proposes these for tests a stakeholder would recognize as a product story. Implement with `Step()` markers narrating the flow.
