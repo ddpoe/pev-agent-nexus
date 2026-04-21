@@ -1,23 +1,43 @@
 {
   "hooks": {
-    "SessionStart": [
+    "PreToolUse": [
       {
-        "matcher": "startup|clear|compact",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "echo PEV-SESSION-START-FIRED"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pev-worktree-scope.sh\"",
+            "timeout": 5
           }
         ]
-      }
-    ],
-    "PostToolUse": [
+      },
       {
-        "matcher": "",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "echo {\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"PEV-POST-TOOL-FIRED\"}}"
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pev-bash-scope.sh\"",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__cortex__cortex_update_section|mcp__cortex__cortex_write_doc|mcp__cortex__cortex_add_section",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pev-doc-scope.sh\"",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__cortex__",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pev-cortex-scope.sh\"",
+            "timeout": 5
           }
         ]
       }

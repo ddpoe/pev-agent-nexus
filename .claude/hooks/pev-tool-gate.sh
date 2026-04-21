@@ -1,0 +1,52 @@
+#!/bin/bash
+# pev-tool-gate.sh — PreToolUse hook for PEV subagents
+# Reads the tool call counter and BLOCKS non-allowlisted tools
+# once the budget limit is reached. Runs BEFORE the tool executes.
+#
+# Args: <limit> [allowlist]
+#   limit     — hard block threshold
+#   allowlist — pipe-separated tool names allowed past limit
+# Counter file path read from .pev-state.json (field: counter_file)
+# Falls back to /tmp/pev-tool-counter-spike if .pev-state.json missing.
+
+# Read hook input from stdin to get the tool name
+INPUT=$(cat)
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
+
+# Threshold and allowlist from positional args
+# Allowlist is comma-separated (pipes can't survive shell command strings)
+LIMIT=${1:-10}
+ALLOWLIST_CSV=${2:-"cortex_update_section,cortex_write_doc,cortex_add_section,cortex_mark_clean,cortex_build,cortex_check"}
+ALLOWLIST="${ALLOWLIST_CSV//,/|}"
+
+# Counter file from .pev-state.json (lives at cwd root — set by EnterWorktree)
+PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
+[ -z "$PROJECT_ROOT" ] && PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
+STATE_FILE="$PROJECT_ROOT/.pev-state.json"
+if [ -f "$STATE_FILE" ]; then
+  PEV_TOOL_COUNTER=$(jq -r '.counter_file // empty' "$STATE_FILE" 2>/dev/null)
+fi
+if [ -z "$PEV_TOOL_COUNTER" ]; then
+  PEV_TOOL_COUNTER="/tmp/pev-tool-counter-spike"
+fi
+
+# Read current count
+COUNT=0
+if [ -f "$PEV_TOOL_COUNTER" ]; then
+  COUNT=$(cat "$PEV_TOOL_COUNTER" 2>/dev/null || echo 0)
+fi
+
+# If under the limit, allow everything
+if [ "$COUNT" -lt "$LIMIT" ]; then
+  exit 0
+fi
+
+# Over limit — check allowlist
+if echo "$TOOL_NAME" | grep -qE "$ALLOWLIST"; then
+  # Allowed tool — let it through
+  exit 0
+fi
+
+# Blocked — deny with reason
+ALLOWED_READABLE="${ALLOWLIST_CSV//,/, }"
+echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"${TOOL_NAME} is blocked (budget ${COUNT}/${LIMIT}). Tools still available: ${ALLOWED_READABLE}. Use cortex_update_section to save your state to the cycle manifest, then return with CONTINUING status. The next incarnation continues from your progress.\"}}"

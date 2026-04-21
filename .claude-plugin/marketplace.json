@@ -4,20 +4,31 @@
     "name": "ddpoe"
   },
   "metadata": {
-    "description": "PEV agent system — Plan-Execute-Validate workflow for structured code changes",
-    "version": "1.6.6"
+    "description": "PEV agent system — Plan-Execute-Validate workflow for structured code changes. Also ships hook-spike, a minimal plugin-hook test harness.",
+    "version": "1.8.0"
   },
   "plugins": [
     {
       "name": "pev",
       "source": "./plugins/pev",
       "description": "PEV (Plan-Execute-Validate) agent workflow with cortex integration",
-      "version": "1.6.6",
+      "version": "1.7.0",
       "author": {
         "name": "ddpoe"
       },
       "category": "productivity",
       "tags": ["agents", "workflow", "code-review", "documentation"]
+    },
+    {
+      "name": "hook-spike",
+      "source": "./plugins/hook-spike",
+      "description": "Graduated plugin-hook test agents — isolates hook resolution behavior (CLAUDE_PLUGIN_ROOT vs CLAUDE_PROJECT_DIR, frontmatter vs hooks.json) with canary-file reporting",
+      "version": "0.1.0",
+      "author": {
+        "name": "ddpoe"
+      },
+      "category": "development",
+      "tags": ["testing", "hooks", "plugin-infra"]
     }
   ]
 }
