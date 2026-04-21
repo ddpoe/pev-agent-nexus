@@ -1,0 +1,176 @@
+# PEV Setup & Migration
+
+Everything a consumer project needs to go from "just installed the plugin" to "running `/pev-cycle` successfully." Also covers migrations when upgrading between PEV versions.
+
+If you're an agent reading this on behalf of a user who just said "we installed pev, now what?" — the fresh-install checklist below is what you run, in order. Each step has the concrete command.
+
+## 1. Install (fresh)
+
+### 1a. Plugin install
+
+Both plugins recommended:
+
+```bash
+claude plugin marketplace add ddpoe/pev-agent-nexus
+claude plugin install pev@pev-agent-nexus
+claude plugin install hook-spike@pev-agent-nexus   # companion: plugin-hook debugging
+```
+
+**Why both?** `hook-spike` is a small companion plugin that gives you a 10-second smoke-test for plugin infrastructure (`/hs-heartbeat`) — invaluable when PEV misbehaves and you need to isolate whether the problem is in PEV itself or in the plugin-hook platform underneath. You can skip it and install later if needed, but the footprint is tiny and it pays for itself the first time something breaks.
+
+### 1b. Cycle & instance directories
+
+PEV writes cycle manifests to `docs/pev/cycles/` and slim-mode checkins to `docs/pev/instances/`. Create the directories:
+
+```bash
+mkdir -p docs/pev/cycles docs/pev/instances
+```
+
+You can commit `.gitkeep` files if you want empty directories tracked.
+
+### 1c. Copy SOP templates (optional but recommended)
+
+PEV reads three DocJSON SOPs from `.pev/` in your repo. If the files are absent, the plugin falls back to generic defaults shipped at `${CLAUDE_PLUGIN_ROOT}/templates/`. Copy into your repo to customize:
+
+```bash
+mkdir -p .pev
+
+# Doc taxonomy — which doc categories the Auditor + Doc Reviewer work on
+cp "$(claude plugin path pev@pev-agent-nexus)/templates/doc-topology.json" .pev/
+
+# Test policy — tier system, annotation contract, coverage expectations
+cp "$(claude plugin path pev@pev-agent-nexus)/templates/test-policy.json" .pev/
+
+# Review criteria — project-specific code-review emphasis (optional)
+cp "$(claude plugin path pev@pev-agent-nexus)/templates/review-criteria.json" .pev/
+```
+
+If `claude plugin path` isn't available on your Claude Code version, the path is `~/.claude/plugins/cache/pev-agent-nexus/pev/<version>/templates/`.
+
+Edit each file to match your project's conventions. The templates are self-documenting — each section explains which skill reads the fields.
+
+See [USER_GUIDE.md §Customizing via `.pev/` SOPs](./USER_GUIDE.md#customizing-via-pev-sops) for what to change and why.
+
+### 1d. (Optional) Let cortex index your SOPs
+
+If you want `cortex_search` / `cortex_history` over your `.pev/` SOPs, add `.pev` to your project's cortex index paths in `cortex.toml`:
+
+```toml
+[paths]
+docs = ["docs/", ".pev/"]   # add .pev/ to whatever paths cortex already indexes
+```
+
+Then:
+
+```bash
+cortex build
+```
+
+Not required — skills read the files directly via the Read tool regardless. But indexing them makes history and search available for humans and agents.
+
+### 1e. Verify
+
+Work through these in order until one fails or you get to the last:
+
+#### Quick check — 10 seconds
+```
+/hs-heartbeat
+```
+Confirms plugin `hooks.json` fires at all. Expect a pass/fail matrix with both canaries (`PreToolUse` + `PostToolUse`) marked as fired. If this fails, the platform-level plugin infrastructure isn't working — see [`../hook-spike/TROUBLESHOOTING.md`](../hook-spike/TROUBLESHOOTING.md) §7 (failure catalog).
+
+Requires `hook-spike` installed (step 1a).
+
+#### Daily usage smoke — 2-5 minutes
+```
+/pev-instance fix a trivial thing (docstring, README typo, etc.)
+```
+Confirms `/pev-instance` dispatches, reads SOPs, writes a checkin, and commits. Good sanity check after any plugin upgrade. If this hangs at the SOP read step, check `${CLAUDE_PROJECT_DIR}/.pev/` files are well-formed DocJSON.
+
+#### Total confirmation — 3-8 minutes
+```
+/pev-spike
+```
+Runs the 11-test PEV hook-infrastructure matrix — worktree scope, bash scope, cortex scope, doc scope, budget warn/urgent/gate, non-allowlisted block, allowlist pass-through. Expect **11/11 pass**. Run this after a fresh install, a major PEV version bump, or when `/hs-heartbeat` passes but you still suspect PEV-specific hook logic is off.
+
+## 2. Migration (upgrading between PEV versions)
+
+Run only the migrations that apply to the version you're upgrading *from*. Migrations compose — if you're going from 1.7 straight to 2.1, run both 2.0.0 and 2.1.0 migrations in order.
+
+### Pre-2.0.0 → any 2.x
+
+Cycle docs moved from `docs/pev-cycles/` to `docs/pev/cycles/`. Cortex doc IDs changed from `{project_id}::docs.pev-cycles.*` to `{project_id}::docs.pev.cycles.*`.
+
+```bash
+# Move the directory
+mkdir -p docs/pev
+git mv docs/pev-cycles docs/pev/cycles
+
+# Re-index so cortex picks up the new doc IDs
+cortex build
+
+# Also create the new instances dir while you're here
+mkdir -p docs/pev/instances
+
+# Commit
+git add -A && git commit -m "chore: migrate docs/pev-cycles -> docs/pev/cycles (PEV v2.0.0)"
+```
+
+### 2.0.x → 2.1.0+
+
+`.pev/` SOPs changed from markdown to DocJSON. The `doc-review-guide.md` file was renamed to `doc-topology.json` and gained new fields (`Auditor action` per category, used for proactive doc updates).
+
+```bash
+# For each .pev/*.md file you customized, port its content to the new JSON template:
+
+# Example for test-policy (same pattern for the other two)
+cp "$(claude plugin path pev@pev-agent-nexus)/templates/test-policy.json" .pev/test-policy.json.new
+# Open .pev/test-policy.json.new and paste your project-specific customizations
+# into the matching `content` fields of the new structure
+mv .pev/test-policy.json.new .pev/test-policy.json
+rm .pev/test-policy.md
+
+# For doc-review-guide.md (the old name):
+cp "$(claude plugin path pev@pev-agent-nexus)/templates/doc-topology.json" .pev/doc-topology.json.new
+# Port your custom categories into the new schema — each category section now has
+# four fields (Path, Triggered by, Auditor action, Doc Reviewer check) instead of
+# the old two. Fill in `Auditor action` to describe what the Auditor should DO
+# when your category's trigger fires.
+mv .pev/doc-topology.json.new .pev/doc-topology.json
+rm .pev/doc-review-guide.md   # note: old file name was doc-review-guide, new is doc-topology
+
+# For review-criteria.json — same pattern as test-policy.json
+# If you hadn't customized it, just remove the old .md and skip
+rm -f .pev/review-criteria.md
+
+git add -A && git commit -m "chore: migrate .pev/*.md to DocJSON format (PEV v2.1.0)"
+```
+
+### 2.1.x → 2.1.1
+
+Docs-only release — no migration. Just `claude plugin update pev@pev-agent-nexus` and confirm `claude plugin list` shows the new version.
+
+## 3. Common setup issues
+
+### "Plugin "pev" is disabled"
+
+Check `<project>/.claude/settings.local.json` for an `enabledPlugins` override. A local `"pev@pev-agent-nexus": false` will override a user-scope `true`. Flip to `true` or remove the override.
+
+### "Plugin "pev" not found"
+
+Run `claude plugin marketplace update pev-agent-nexus` to refresh the marketplace cache, then retry the install.
+
+### Hooks appear silent / `/hs-heartbeat` fails
+
+Start with [`../hook-spike/TROUBLESHOOTING.md`](../hook-spike/TROUBLESHOOTING.md) §8.1 (plugin hook firing check) and §7 (failure catalog). Common culprits on Windows: `MSYS_NO_PATHCONV=1` missing on `claude -p` invocations, native Windows jq not on PATH.
+
+### Multiple PEV versions showing up in `claude plugin list`
+
+Old registrations from previous projects' local/project-scope installs can linger in `~/.claude/plugins/installed_plugins.json`. `cd` into each original project and run `claude plugin uninstall pev --scope=<local|project>` to clean up. The user-scope install remains.
+
+## 4. After setup, where to go
+
+- **First `/pev-cycle`** → [USER_GUIDE.md §Typical walk-through](./USER_GUIDE.md#typical-walk-through)
+- **Understanding what agent does what** → [DESIGN.md §Agent responsibilities](./DESIGN.md#agent-responsibilities-one-line-each)
+- **Customizing deeper** → [USER_GUIDE.md §Customizing via `.pev/` SOPs](./USER_GUIDE.md#customizing-via-pev-sops)
+- **Something broke** → [../hook-spike/TROUBLESHOOTING.md](../hook-spike/TROUBLESHOOTING.md)
+- **Version history** → [../../CHANGELOG.md](../../CHANGELOG.md)
