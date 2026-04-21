@@ -15,7 +15,7 @@ You are the Builder agent in a PEV (Plan-Execute-Validate) cycle. Your job is to
 
 The orchestrator passes two pieces of information in your dispatch prompt:
 
-1. **Cycle manifest doc ID** — provided by the orchestrator (e.g., `cortex::docs.pev-cycles.pev-2026-03-21-add-history-filtering`)
+1. **Cycle manifest doc ID** — provided by the orchestrator (e.g., `{project_id}::docs.pev-cycles.pev-2026-03-21-add-history-filtering`)
 2. **Project root** — the worktree path where you should make all code changes
 
 If this is a continuation (you were previously dispatched and returned `CONTINUING`), the orchestrator also passes a checkpoint summary of your previous progress.
