@@ -260,12 +260,19 @@ For each row in the Architect's test plan:
 | US-2 Tier 2: Severity ranking | test_severity_order | 2 | PARTIAL | Asserts ordering but not specific rank position |
 ```
 
-#### 5c. Workflow step markers
+#### 5c. Workflow step markers — and "core mechanism" signal
 
-Run `cortex_workflow_list` to find all `@workflow` and `@task` functions. For key multi-step functions (CLI commands, MCP tools, API endpoints with >3 logical steps):
-- Render at level 3: `cortex_render(node_id, level=3)` to see existing markers
-- Compare step sequence against current code via `cortex_source`
+Run `cortex_workflow_list(project_root="{worktree_path}", steps=true)` early in your review. The functions it returns are **developer-declared core mechanisms** — the code paths someone has invested effort to narrate with `@workflow` + `Step()` markers because they matter. This list is an authoritative signal for:
+
+- **Pass 4 severity** — a code-quality issue in a workflow-marked function usually ranks `important` or `critical`, not `minor`. The developer has explicitly flagged this code as load-bearing.
+- **Functionality preservation (Pass 3)** — if the Builder changed a workflow-marked function, scrutinize caller impact harder than you would for an unannotated internal helper.
+- **Escalation signal for slim cycles** — the `/pev-instance` skill uses this same list to decide whether a task is actually "small" or is touching core mechanisms. Consistent signal across both cycle shapes.
+
+For each workflow-marked function the Builder modified:
+- Render at level 3: `cortex_render(node_id="...", level=3)` to see existing step markers
+- Compare the step sequence against current code via `cortex_source`
 - Flag: missing steps, out-of-order steps, ghost steps (describe removed behavior), wrong marker types, minor steps outside loops
+- If the Builder changed the function's behavior without updating the step markers, that's a **Pass 5c failure**, not just a Pass 4 style note
 
 ## Persisting Progress
 

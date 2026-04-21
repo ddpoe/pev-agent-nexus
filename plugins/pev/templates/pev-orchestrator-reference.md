@@ -10,7 +10,7 @@ Cycle ID format: `pev-YYYY-MM-DD-{slug}`
 
 Collision check:
 ```bash
-ls docs/pev-cycles/ 2>/dev/null | grep "^{slug-prefix}"
+ls docs/pev/cycles/ 2>/dev/null | grep "^{slug-prefix}"
 ```
 If collision exists, append `-2`, `-3`, etc.
 
@@ -18,7 +18,7 @@ Worktree path: `.claude/worktrees/{cycle-id}`
 
 Branch name: `worktree-{cycle-id}`
 
-Cortex doc ID: `{project_id}::docs.pev-cycles.{cycle-id}` — the `{project_id}` prefix MUST be read from `cortex.toml` (`project_id` field) at runtime. Do NOT hardcode it. Read `cortex.toml` in the project root and extract the `project_id` value. Example: if `project_id = "pm_mvp"`, the doc ID is `pm_mvp::docs.pev-cycles.{cycle-id}`.
+Cortex doc ID: `{project_id}::docs.pev.cycles.{cycle-id}` — the `{project_id}` prefix MUST be read from `cortex.toml` (`project_id` field) at runtime. Do NOT hardcode it. Read `cortex.toml` in the project root and extract the `project_id` value. Example: if `project_id = "pm_mvp"`, the doc ID is `pm_mvp::docs.pev.cycles.{cycle-id}`.
 
 ## Manifest Creation
 
@@ -34,7 +34,7 @@ cortex_write_doc(
 
 Required values to fill:
 - `title`: `"PEV Cycle: {cycle-id}"`
-- `id`: `"pev-cycles/{cycle-id}"` (filename hint)
+- `id`: `"pev/cycles/{cycle-id}"` (filename hint)
 - `tags`: `["pev-cycle", "pev-active"]`
 - `status.content`: Phase, baseline SHA, timestamp, cycle ID
 - `request.content`: User's request verbatim
@@ -47,7 +47,7 @@ Required values to fill:
 - `auditor.change-ledger`: Filled by Auditor as it works
 - `auditor.impact-report`: Filled by Orchestrator from Auditor return
 
-After writing, the doc is indexed as `{project_id}::docs.pev-cycles.{cycle-id}`. Store this as `cycle_doc_id` in `.pev-state.json`.
+After writing, the doc is indexed as `{project_id}::docs.pev.cycles.{cycle-id}`. Store this as `cycle_doc_id` in `.pev-state.json`.
 
 All other sections start with placeholder content — Architect, Builder, and Auditor fill them.
 
@@ -66,7 +66,7 @@ Format:
 }
 ```
 
-- `cycle_doc_id`: the full cortex doc ID for the cycle manifest: `{project_id}::docs.pev-cycles.{cycle-id}`. The `{project_id}` MUST be read from `cortex.toml` at runtime — it varies per project. All dispatch prompts and hooks use this value.
+- `cycle_doc_id`: the full cortex doc ID for the cycle manifest: `{project_id}::docs.pev.cycles.{cycle-id}`. The `{project_id}` MUST be read from `cortex.toml` at runtime — it varies per project. All dispatch prompts and hooks use this value.
 - `worktree_path`: absolute path to the worktree created in Phase 1. Builder and Reviewer receive this — hooks use it to scope Write/Edit, Bash, and cortex `project_root` calls. Not used for Auditor (runs on main).
 - Tool-budget counters are keyed on the subagent's `agent_id` (read by hooks from stdin JSON) at `/tmp/pev-counter-<agent_id>.txt`. Files are auto-created on first increment and auto-deleted by the `SubagentStop` hook. No counter_file field needed in state.
 - Use the Write tool to create this file.
@@ -516,7 +516,7 @@ poetry run cortex history checkpoint . --message "pev-cycle-{cycle-id}-audit-com
 ```bash
 python scripts/analyze_pev_session.py --find-cycle {cycle-id} --docjson --summary
 ```
-This writes a DocJSON report to `docs/pev-cycles/{cycle-id}-efficiency.json` and prints a compact summary. Present the summary to the user.
+This writes a DocJSON report to `docs/pev/cycles/{cycle-id}-efficiency.json` and prints a compact summary. Present the summary to the user.
 
 5. **Delete Auditor state file:**
 ```bash
@@ -529,7 +529,7 @@ rm -f .pev-state.json
 
 **Agent dispatch fails:** Check that the pev plugin is installed and enabled (`claude plugin list`). Agent definitions ship in the plugin at `${CLAUDE_PLUGIN_ROOT}/agents/pev-{agent}.md`. If the plugin looks fine but dispatch still fails, see `plugins/hook-spike/TROUBLESHOOTING.md` §7 for known failure modes.
 
-**cortex_write_doc fails:** Check that `docs/pev-cycles/` directory exists.
+**cortex_write_doc fails:** Check that `docs/pev/cycles/` directory exists.
 
 **Worktree creation fails:** Check for stale worktrees with `git worktree list` and remove them.
 
