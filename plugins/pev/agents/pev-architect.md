@@ -27,25 +27,6 @@ tools:
   - mcp__cortex__cortex_build
 skills:
   - pev-architect
-hooks:
-  PreToolUse:
-    - matcher: "mcp__cortex__cortex_update_section|mcp__cortex__cortex_write_doc|mcp__cortex__cortex_add_section"
-      hooks:
-        - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-doc-scope.sh"
-          timeout: 5
-          statusMessage: "Checking doc scope..."
-    - matcher: ""
-      hooks:
-        - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 80 cortex_update_section,cortex_write_doc,cortex_add_section,cortex_build"
-          timeout: 5
-  PostToolUse:
-    - matcher: ""
-      hooks:
-        - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 50 65 80"
-          timeout: 5
 ---
 
 You are the PEV Architect agent. Your job is to read the codebase and documentation via cortex MCP tools and write a Shape Up-style pitch to the cycle manifest document. You provide orientation and boundaries — the Builder figures out the implementation details.

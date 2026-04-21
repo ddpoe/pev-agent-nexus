@@ -1,22 +1,29 @@
 #!/bin/bash
-# pev-doc-scope.sh — PreToolUse hook for PEV Architect doc-write tools
+# pev-doc-scope.sh — PreToolUse hook for PEV doc-write cortex tools.
 # Enforces that doc-write calls target only the current cycle manifest.
-# Reads cycle_doc_id from .pev-state.json, compares against
-# the doc_id (or doc_json.id) in the tool_input. Exit 2 to block.
+#
+# Active ONLY when agent_type starts with "pev:" (a PEV subagent).
+# Reads cycle_doc_id from .pev-state.json, compares against the doc_id
+# (or doc_json.id or extracted from section_id) in the tool_input.
 
 INPUT=$(cat)
+
+# Gate: PEV subagents only
+AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
+case "$AGENT_TYPE" in
+  pev:*) ;;
+  *) exit 0 ;;
+esac
 
 # Resolve .pev-state.json (lives at cwd root — set by EnterWorktree)
 PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
 [ -z "$PROJECT_ROOT" ] && PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-}"
 STATE_FILE="$PROJECT_ROOT/.pev-state.json"
 
-# No state file → not in a PEV cycle → allow
 if [ ! -f "$STATE_FILE" ]; then
   exit 0
 fi
 
-# Read allowed cycle doc ID from orchestrator state file
 CYCLE_DOC_ID=$(jq -r '.cycle_doc_id // ""' "$STATE_FILE" 2>/dev/null)
 
 if [ -z "$CYCLE_DOC_ID" ]; then
@@ -26,12 +33,8 @@ fi
 
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // ""')
 
-# Extract the target doc_id based on which tool is being called
 case "$TOOL" in
   mcp__cortex__cortex_update_section)
-    # update_section has section_id (fully qualified), not doc_id
-    # e.g. "cortex::docs.pev-cycles.pev-2026-03-21-foo::scope"
-    # Extract doc_id by removing the last ::segment
     SECTION_ID=$(echo "$INPUT" | jq -r '.tool_input.section_id // ""')
     TARGET=$(echo "$SECTION_ID" | sed 's/::[^:]*$//')
     ;;
@@ -39,7 +42,6 @@ case "$TOOL" in
     TARGET=$(echo "$INPUT" | jq -r '.tool_input.doc_id // ""')
     ;;
   mcp__cortex__cortex_write_doc)
-    # write_doc may receive doc_json as a string or object
     DOC_JSON=$(echo "$INPUT" | jq -r '.tool_input.doc_json // ""')
     if echo "$DOC_JSON" | jq -e . >/dev/null 2>&1; then
       TARGET=$(echo "$DOC_JSON" | jq -r '.id // ""')
@@ -48,7 +50,6 @@ case "$TOOL" in
     fi
     ;;
   *)
-    # Not a doc-write tool we care about — allow
     exit 0
     ;;
 esac

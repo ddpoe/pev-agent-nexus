@@ -47,15 +47,15 @@ Capture baseline SHA (`git rev-parse HEAD`).
 
 Then `poetry install --no-root`, `cortex_checkout` to copy cortex DB. See ref: `worktree-commands`.
 
-The cycle doc ID is `cortex::docs.pev-cycles.{cycle-id}`. The `cortex` prefix comes from `cortex.toml` (`project_id = "cortex"`), which is a tracked file present in both the main repo and worktrees.
+Read `cortex.toml` in the project root to get the `project_id` value. The cycle doc ID is `{project_id}::docs.pev-cycles.{cycle-id}` — do NOT hardcode the prefix, it varies per project.
 
-**Write `.pev-state.json` to the worktree root** (cwd after `EnterWorktree`) — see ref: `state-file`. Include `worktree_path`, `cycle_doc_id` (`cortex::docs.pev-cycles.{cycle-id}`), and `counter_file` for the Architect. Hooks read the `cwd` field from their input and find `.pev-state.json` at that root. Per-worktree state enables parallel PEV cycles.
+**Write `.pev-state.json` to the worktree root** (cwd after `EnterWorktree`) — see ref: `state-file`. Include `worktree_path` and `cycle_doc_id` (`{project_id}::docs.pev-cycles.{cycle-id}`). Hooks read the `cwd` field from their input and find `.pev-state.json` at that root. Per-worktree state enables parallel PEV cycles. Tool-budget counters are keyed on the subagent's `agent_id` (from hook input) — no counter_file field needed.
 
 Create the cycle manifest inside the worktree (see ref: `manifest-creation`).
 
 ### 2. Plan (Architect)
 
-Update `.pev-state.json` counter_file for Architect. Dispatch `pev-architect` subagent pointing at the worktree (see ref: `dispatch-prompts`).
+Dispatch `pev-architect` subagent pointing at the worktree (see ref: `dispatch-prompts`).
 
 Handle returns:
 - **NEEDS_INPUT**: Parse the Architect's JSON payload.
@@ -83,7 +83,7 @@ Read the cycle manifest. Present the Architect's pitch — scope, user stories, 
 
 **Before dispatching**, read the Architect's pitch from the cycle manifest and inline it into the Builder dispatch prompt (see ref: `builder-context-handoff`). The Builder uses cortex tools to read source on demand from the worktree's cortex DB snapshot.
 
-Update `.pev-state.json` counter_file for Builder. Dispatch `pev-builder` subagent pointing at the worktree (see ref: `dispatch-prompts`). Do NOT use `isolation: "worktree"`.
+Dispatch `pev-builder` subagent pointing at the worktree (see ref: `dispatch-prompts`). Do NOT use `isolation: "worktree"`.
 
 Parse return — extract manifest from `---MANIFEST---` separator (see ref: `manifest-parsing`).
 
@@ -91,13 +91,13 @@ Handle status codes:
 - **DONE**: Write manifest to `builder.manifest` section of cycle doc. Proceed to Phase 5.
 - **DONE_WITH_CONCERNS**: Present concerns to user with options: (1) proceed to review, (2) redispatch Builder to address concerns (treat as CONTINUING — same worktree), (3) abort.
 - **BLOCKED / NEEDS_CONTEXT**: Present to user. Options: provide guidance and redispatch, or abort (set status to `incomplete`).
-- **CONTINUING** (or no separator — maxTurns cutoff): The Builder's plan and progress are already in the manifest (it writes them as it works). Write checkpoint to manifest. Re-index the worktree (`cortex_build(project_root=worktree_path)`) so the next Builder incarnation can use cortex tools on modified files. Increment incarnation, redispatch to same worktree.
+- **CONTINUING** (or no separator — maxTurns cutoff): The Builder's plan and progress are already in the manifest (it writes them as it works). Write checkpoint to manifest. The Builder's `SubagentStop` hook has already rebuilt the worktree cortex index. Increment incarnation, redispatch to same worktree.
 
 ### 5. Review
 
-**Re-index the worktree** before dispatching the Reviewer: run `cortex_build(project_root=worktree_path)` so cortex tools reflect the Builder's changes. Without this, `cortex_check`, `cortex_diff`, and `cortex_source` would return pre-Builder data.
+The Builder's `SubagentStop` hook has already rebuilt the worktree cortex index, so the Reviewer's `cortex_check`, `cortex_diff`, and `cortex_source` calls reflect the Builder's changes.
 
-Update `.pev-state.json` counter_file for Reviewer. Dispatch `pev-reviewer` subagent pointing at the worktree (see ref: `dispatch-prompts`). The Reviewer is read-only — it cannot modify code or docs.
+Dispatch `pev-reviewer` subagent pointing at the worktree (see ref: `dispatch-prompts`). The Reviewer is read-only — it cannot modify code or docs.
 
 The Reviewer performs a six-pass review:
 0. **Run tests** — full test suite, immediate FAIL if tests don't pass
@@ -122,13 +122,13 @@ Parse return — extract JSON verdict from `---REVIEW---` separator. Write the r
 Handle status codes:
 - **PASS**: Write review to cycle doc. Present test coverage table. "Review passed. Test coverage above. Approve to merge, or request Builder to add/change tests?"
 - **PASS_WITH_CONCERNS**: Write review to cycle doc. Present concerns and test coverage table to user. Options: (1) proceed to merge, (2) redispatch Builder to fix concerns or improve test coverage, then re-review.
-- **FAIL**: Write review to cycle doc. Present failures and test coverage table to user. Redispatch Builder with the specific failures to fix (same worktree). After fix, re-index the worktree (`cortex_build`), then re-dispatch Reviewer. Max 2 review-fix loops before escalating to user.
+- **FAIL**: Write review to cycle doc. Present failures and test coverage table to user. Redispatch Builder with the specific failures to fix (same worktree). The Builder's `SubagentStop` hook rebuilds the cortex index; then re-dispatch Reviewer. Max 2 review-fix loops before escalating to user.
 - **Source doc CONTRADICTION in review**: If the Reviewer finds a CONTRADICTION between the pitch and a source document, this is a special case. The Builder implemented the pitch correctly — the pitch itself is wrong. Present to user: "The Reviewer found that the Architect's pitch contradicts [source doc]. The Builder implemented the pitch as written, but the pitch is inconsistent with upstream requirements. Options: (1) abort and re-plan with a new Architect dispatch, (2) proceed to merge knowing the contradiction exists." **HUMAN GATE**.
 - **NEEDS_INPUT**: Relay the Reviewer's questions to the user via AskUserQuestion (same proxy-question protocol as the Architect). Resume with SendMessage containing the answers and the Reviewer's `context` field.
 
 ### 6. Merge
 
-**Re-index the worktree**: run `cortex_build(project_root=worktree_path)` then `cortex_check(project_root=worktree_path)`.
+The Builder's `SubagentStop` hook has already rebuilt the worktree cortex index. Run `cortex_check(project_root=worktree_path)` to surface staleness info for the merge summary.
 
 Construct change-set from `git diff {baseline_sha}..HEAD` + Builder manifest. Write Builder manifest and change-set to cycle doc.
 
@@ -146,7 +146,7 @@ The Auditor runs on **main** (not a worktree). The merge has already happened �
 
 **Auditor mutex check** (see ref: `auditor-mutex`). Check if `.pev-state.json` exists in the main repo root. If it does, another cycle's Auditor is running — present options to the user (wait, end the other, or skip). **HUMAN GATE** if conflict detected.
 
-When clear, write `.pev-state.json` to the main repo root with `cycle_id`, `cycle_doc_id`, and `counter_file` for the Auditor (no `worktree_path`).
+When clear, write `.pev-state.json` to the main repo root with `cycle_id` and `cycle_doc_id` (no `worktree_path`).
 
 Update status to `auditor` (see ref: `status-updates`). Dispatch `pev-auditor` subagent pointing at the **main repo** (see ref: `dispatch-prompts`).
 
@@ -162,7 +162,7 @@ Handle status codes:
 
 After the Auditor completes (DONE or DONE_WITH_CONCERNS), review its documentation changes.
 
-Update `.pev-state.json` counter_file for Doc Reviewer. Dispatch `pev-doc-reviewer` subagent pointing at the **main repo** (see ref: `dispatch-prompts`).
+Dispatch `pev-doc-reviewer` subagent pointing at the **main repo** (see ref: `dispatch-prompts`).
 
 Parse return — extract review from `---DOC-REVIEW---` separator.
 

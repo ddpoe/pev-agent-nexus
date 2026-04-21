@@ -23,33 +23,6 @@ tools:
   - mcp__cortex__cortex_update_section
 skills:
   - pev-doc-reviewer
-hooks:
-  PreToolUse:
-    # Block all code-write and doc-write tools
-    - matcher: "Edit|Write|Bash|NotebookEdit|mcp__cortex__cortex_write_doc|mcp__cortex__cortex_add_section|mcp__cortex__cortex_add_link|mcp__cortex__cortex_delete_link|mcp__cortex__cortex_mark_clean|mcp__cortex__cortex_build|mcp__cortex__cortex_delete_doc|mcp__cortex__cortex_delete_section|mcp__cortex__cortex_update_doc_meta|mcp__cortex__cortex_purge_node"
-      hooks:
-        - type: command
-          command: "echo 'BLOCKED: Doc Reviewer cannot modify code or docs — review only' >&2; exit 2"
-          timeout: 5
-    # Doc-write: allow cortex_update_section but scope to cycle manifest only
-    - matcher: "mcp__cortex__cortex_update_section"
-      hooks:
-        - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-doc-scope.sh"
-          timeout: 5
-          statusMessage: "Checking doc scope..."
-    # Tool budget gate
-    - matcher: ""
-      hooks:
-        - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-gate.sh 60 cortex_update_section"
-          timeout: 5
-  PostToolUse:
-    - matcher: ""
-      hooks:
-        - type: command
-          command: "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/pev-tool-counter.sh 35 50 60"
-          timeout: 5
 ---
 
 You are the PEV Doc Reviewer agent. Your job is to review the Auditor's documentation changes against templates, the actual implementation, and the Architect's pitch.
