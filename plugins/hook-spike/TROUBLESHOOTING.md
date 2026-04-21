@@ -127,6 +127,77 @@ Future hooks in this marketplace must respect these patterns, or they won't work
 
 ---
 
+## 5.5 How Claude Code handles hook I/O
+
+Every hook process has three genuinely separate output channels. They surface differently to the agent. Get this model right and 80% of hook debugging clicks into place.
+
+### The three channels
+
+| Channel | How you write to it | Who reads it |
+|---|---|---|
+| **stdout** (fd 1, unredirected) | `echo "x"` with no redirect | Claude Code — parses for `{"hookSpecificOutput": {...}}` |
+| **stderr** (fd 2) | `echo "x" >&2` | Claude Code — surfaces as denial reason iff `exit 2` |
+| **filesystem** (file redirect) | `echo "x" >> /tmp/log` or `> /tmp/log` | Only whoever inspects the file later (you) |
+
+Shell redirects (`>>`, `>`, `2>`) reassign the underlying file descriptor *before* any bytes leave the process. So `echo "x" >> /tmp/foo` writes nothing to stdout — the bytes are routed to the file instead. Claude Code sees an empty stdout pipe.
+
+### How Claude Code treats stderr + exit code
+
+Claude Code uses stderr as a **reason channel**, not a log channel — it's attached to the tool-call outcome:
+
+| Exit code | Tool outcome | What happens to stderr |
+|---|---|---|
+| `0` | Tool runs normally | Discarded from the agent's view |
+| `2` | Tool BLOCKED | Stderr becomes the `permissionDecisionReason` shown to the agent |
+| Other non-zero | Error (tool still runs, fail-open) | Logged internally, not surfaced to the agent |
+
+Two concrete observations from this session:
+
+- `hs-heartbeat`'s hook does `echo '*** HOOK-SPIKE: PreToolUse(Bash) fired ***' >&2` then `exit 0`. The subagent explicitly reported *"No hook messages seen"* — stderr on exit 0 is invisible.
+- `pev-worktree-scope.sh` does `echo "BLOCKED: Write/Edit target '...'" >&2 ; exit 2`. The spike recorded exactly that string as the hook_message in its results — stderr on exit 2 is surfaced as the block reason.
+
+Same mechanism. Visibility depends entirely on exit code.
+
+### How Claude Code treats stdout
+
+stdout is a **structured injection channel**. Claude Code parses it as the hook-output schema.
+
+- **Valid JSON with `additionalContext`** → injected into the agent's next turn as a system reminder. `pev-tool-counter.sh` uses this for budget advisories ("TOOL BUDGET: 3/7...") — the agent sees them.
+- **Valid JSON with `permissionDecision: deny`** → signals a block, but in practice only reliably triggers one when combined with `exit 2`. Use stderr + exit 2 for blocks instead.
+- **Non-JSON plaintext** → reaches Claude Code but fails to parse. Silently discarded.
+
+### Why canary files are authoritative for debugging
+
+Because the filesystem channel is **decoupled from Claude Code's surfacing logic entirely**:
+
+- stderr on exit 0 is invisible to the agent
+- stderr on other non-zero is invisible to the agent
+- stdout without valid JSON is dropped
+- A file on disk is always there — you can inspect it from any process, at any time
+
+So when you add `echo "[trace]" >> /tmp/pev-hook-debug.log 2>/dev/null` to a hook, you get tracing that is **visible to you, invisible to the agent** — no influence on agent behavior, no noise in the transcript, always retrievable. This is why canary files and debug logs are the first tool to reach for when a hook seems to "not fire."
+
+### Output cheat sheet
+
+Pick by intent:
+
+| Intent | Mechanism |
+|---|---|
+| Block a tool call | `echo "reason" >&2; exit 2` |
+| Inject a non-blocking message to the agent | `echo '{"hookSpecificOutput":{"additionalContext":"..."}}'` on stdout, exit 0 |
+| Debug trace for yourself | Redirect to file: `echo "..." >> /tmp/some-log 2>/dev/null` |
+| Structured artifact for other tools to read | Write a file with a known format (canary) |
+
+### One edge case worth knowing
+
+If a hook process crashes with "command not found" or similar (exit 127 etc.), Claude Code typically surfaces a terse transcript notice like *"Hook PreToolUse completed with non-zero exit code: 127"*. Three distinct observables to keep straight:
+
+- **Silent absence** → hook didn't fire at all (matcher miss, plugin not loaded, or hook gate exited 0 early)
+- **Crash notice in transcript** → hook fired but blew up before doing useful work
+- **Denial reason in transcript** → hook fired, decided to block, used `exit 2` correctly
+
+---
+
 ## 6. Windows gotchas (explicit)
 
 The Windows + git-bash + native-jq stack has three layers of path handling, each with its own assumptions. Here's the list we hit.
@@ -183,11 +254,13 @@ In git-bash, `claude -p "/pev-spike"` can get rewritten to `claude -p "C:/Progra
 MSYS_NO_PATHCONV=1 claude -p "/pev-spike" --dangerously-skip-permissions ...
 ```
 
-### 6.5 Bash heredocs strip `\\` silently
+### 6.5 Bash heredocs strip `\\` silently (debug-only workaround)
 
-Constructing test JSON in a `<<'EOF'` heredoc — e.g. trying to write `"cwd":"C:\\Users\\..."` — produces single backslashes in the resulting file (`C:\Users\...`), which is **invalid JSON**. jq rejects it with `Invalid escape at line 1, column N`. This is specific to the git-bash build on this system.
+*Only relevant when constructing synthetic hook-input JSON by hand for standalone hook testing. Production hooks never hit this.*
 
-**Fix:** generate test JSON via Python `json.dump` — it escapes correctly:
+Constructing test JSON in a `<<'EOF'` heredoc — e.g. trying to write `"cwd":"C:\\Users\\..."` — produces single backslashes in the resulting file (`C:\Users\...`), which is **invalid JSON**. jq rejects it with `Invalid escape at line 1, column N`. This appears specific to the git-bash build on this system; a `<<'EOF'` heredoc should preserve `\\` literally, but here it doesn't.
+
+**Fix for test-input construction:** use Python `json.dump` — it escapes correctly without any shell interference:
 
 ```python
 import json
