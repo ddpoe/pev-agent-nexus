@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "PEV agent system — Plan-Execute-Validate workflow for structured code changes. Also ships hook-spike, a minimal plugin-hook test harness.",
-    "version": "2.0.0"
+    "version": "2.0.1"
   },
   "plugins": [
     {
       "name": "pev",
       "source": "./plugins/pev",
       "description": "PEV (Plan-Execute-Validate) agent workflow with cortex integration",
-      "version": "1.9.0",
+      "version": "1.9.1",
       "author": {
         "name": "ddpoe"
       },

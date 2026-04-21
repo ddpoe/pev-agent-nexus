@@ -8,8 +8,6 @@
 
 INPUT=$(cat)
 
-echo "[$(date -Is 2>/dev/null || echo now)] hook=cortex-scope pid=$$ agent_type=$(echo "$INPUT" | jq -r '.agent_type // "<empty>"' 2>/dev/null) tool=$(echo "$INPUT" | jq -r '.tool_name // "<empty>"' 2>/dev/null) event=$(echo "$INPUT" | jq -r '.hook_event_name // "<empty>"' 2>/dev/null)" >> /tmp/pev-hook-debug.log 2>/dev/null
-
 # Gate: PEV subagents only
 AGENT_TYPE=$(echo "$INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
 case "$AGENT_TYPE" in
@@ -65,8 +63,6 @@ else
   echo "BLOCKED: project_root '$TOOL_PROJECT_ROOT' does not exist on disk" >&2
   exit 2
 fi
-
-echo "[cortex-scope] compare TOOL_PROJECT_ROOT=[$TOOL_PROJECT_ROOT] WORKTREE_PATH=[$WORKTREE_PATH]" >> /tmp/pev-hook-debug.log 2>/dev/null
 
 if [ "$TOOL_PROJECT_ROOT" = "$WORKTREE_PATH" ]; then
   exit 0
