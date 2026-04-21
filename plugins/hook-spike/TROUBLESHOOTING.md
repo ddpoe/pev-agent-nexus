@@ -129,9 +129,81 @@ Future hooks in this marketplace must respect these patterns, or they won't work
 
 ## 5.5 How Claude Code handles hook I/O
 
-Every hook process has three genuinely separate output channels. They surface differently to the agent. Get this model right and 80% of hook debugging clicks into place.
+Get this model right and 80% of hook debugging clicks into place.
 
-### The three channels
+### The model: pipes, not files
+
+A hook is NOT a long-running process that Claude writes state into. It's a **new bash process spawned per tool call**, wired up with pipes:
+
+```
+Claude Code process
+  │
+  │ (tool call triggers a matching hook)
+  │
+  ├─ spawns: bash ${CLAUDE_PLUGIN_ROOT}/hooks/my-hook.sh
+  │             ↑
+  │             │ stdin pipe (ephemeral — closes when hook exits)
+  │             │
+  │             └─ Claude writes JSON payload:
+  │                {"session_id":"...", "agent_type":"pev:pev-spike",
+  │                 "agent_id":"xyz", "cwd":"C:\\...",
+  │                 "tool_name":"Bash", "tool_input":{...}, ...}
+  │
+  │ (hook reads stdin, runs, exits)
+  │
+  └─ reads: exit code + stdout + stderr
+```
+
+The stdin JSON is **constructed in memory per hook invocation and streamed to the child's stdin pipe**. Claude Code never writes it to a file from its side. When the hook exits, the pipe closes and that payload is gone. The next hook invocation gets a brand-new process with a brand-new payload.
+
+**Fields like `agent_type` and `agent_id` are not files you look up — they're keys in the JSON payload that Claude re-sends on every invocation.**
+
+### Lifetime of identity fields
+
+Claude Code tracks subagent context in its own memory for the lifetime of the subagent session, and stamps that identity into each hook invocation's stdin JSON:
+
+```
+orchestrator calls Agent(subagent_type="pev-spike")
+  │
+  ├─ Claude spawns subagent session internally
+  │   (Claude remembers: "active subagent = pev:pev-spike, agent_id = xyz")
+  │
+  ├─ subagent calls Bash
+  │   ├─ PreToolUse hook → stdin JSON has agent_type="pev:pev-spike"
+  │   └─ PostToolUse hook → stdin JSON has agent_type="pev:pev-spike"
+  │
+  ├─ subagent calls Read
+  │   └─ PreToolUse hook → stdin JSON has agent_type="pev:pev-spike"
+  │
+  ├─ subagent returns
+  │   └─ SubagentStop hook → stdin JSON has agent_type="pev:pev-spike"
+  │       (plus last_assistant_message, agent_transcript_path)
+  │
+  └─ (subagent session ends; Claude discards the context)
+      orchestrator's next tool call → stdin JSON has NO agent_type
+```
+
+### Three identity fields in the stdin payload
+
+Different scopes, useful to combine:
+
+| Field | Scope | Uniqueness |
+|---|---|---|
+| `session_id` | Claude Code session (shared across orchestrator + its subagents) | One per `claude` process |
+| `agent_id` | Subagent invocation | One per Agent-tool call — if you dispatch `pev-spike` twice, you get two `agent_id`s |
+| `agent_type` | Agent definition used | Same value for every invocation of the same agent (e.g. `pev:pev-spike`) |
+
+This is why `pev-tool-counter.sh` uses `agent_id` for counter files: it guarantees no collision when the orchestrator happens to dispatch two instances of the same agent in one session.
+
+### What CAN'T be passed through the stdin channel
+
+- You can't mutate the next hook's stdin from inside this hook. Claude constructs each payload fresh.
+- You can't read another hook's stdin. The pipe closes with the process.
+- You can't get state that persists across invocations via env vars — every hook process starts with a fresh environment inherited from Claude Code (which inherited from your shell). `export FOO=bar` inside a hook dies with that process.
+
+For cross-invocation state, use the filesystem (see below).
+
+### The three output channels
 
 | Channel | How you write to it | Who reads it |
 |---|---|---|
