@@ -270,6 +270,122 @@ If a hook process crashes with "command not found" or similar (exit 127 etc.), C
 
 ---
 
+## 5.6 Environment variables and state persistence
+
+Env vars reach your hook in two ways, and neither is magic. State that survives across invocations is a separate concern — the filesystem — because the env channel is one-way.
+
+### The inheritance chain
+
+```
+your shell env
+      │
+      │ (you run `claude`)
+      ▼
+Claude Code process env
+      │
+      │ (Claude spawns a hook)
+      ▼
+hook process env   ← sees everything above, plus CLAUDE_* vars
+                     Claude injects for this hook
+```
+
+Hooks inherit whatever your shell had when you launched Claude. So if you `export PATH=/custom:$PATH` before `claude`, hooks see that custom PATH. If you start `claude` from an Anaconda-activated shell, hooks see Anaconda env vars.
+
+### What Claude Code sets for you
+
+Captured by `hook-spike`'s `hooksjson-control.env` canary, here's what Claude injects (values from this session):
+
+| Variable | Scope | Example value | When set |
+|---|---|---|---|
+| `CLAUDECODE` | Marker that you're inside Claude Code | `1` | Always |
+| `CLAUDE_CODE_ENTRYPOINT` | How the process was invoked | `sdk-cli` (from `claude -p`) | Always |
+| `CLAUDE_CODE_EXECPATH` | Path to the claude binary | `C:\Users\...\claude.exe` | Always |
+| `CLAUDE_PROJECT_DIR` | Consumer project root | `C:\Users\dap182\Documents\git\temp\workflow-canvas` | Always (points at the project claude was launched from) |
+| `CLAUDE_PLUGIN_ROOT` | Root of the plugin this hook belongs to | `/c/Users/dap182/.claude/plugins/cache/pev-agent-nexus/hook-spike/0.1.0` | Only for plugin-scoped hooks (those registered via `plugins/<name>/hooks/hooks.json`) |
+| `CLAUDE_PLUGIN_DATA` | Persistent per-plugin data dir | `/c/Users/dap182/.claude/plugins/data/hook-spike-pev-agent-nexus` | Plugin-scoped hooks only |
+
+**Important distinction**: `CLAUDE_PLUGIN_ROOT` is *not* available in every hook — only in hooks that the plugin system invoked. If you register a hook in user-level `~/.claude/settings.json`, there's no plugin context, and `CLAUDE_PLUGIN_ROOT` is unset. Don't depend on it outside plugin hooks.
+
+`CLAUDE_PLUGIN_DATA` is the right place for persistent per-plugin state (settings, caches) — survives session restarts, scoped to the plugin. Use `/tmp/` instead for transient per-run state (counters, debug logs) that should *not* survive.
+
+### Adding your own custom env vars
+
+Three mechanisms, increasing scope:
+
+**1. One-shot per run** — prepend when launching claude:
+```bash
+PEV_SESSION_ID=xyz123 MSYS_NO_PATHCONV=1 claude -p "/pev-spike" ...
+```
+All hooks fired during that claude process see `PEV_SESSION_ID=xyz123`.
+
+**2. Per-shell** — export first, then run claude:
+```bash
+export PEV_SESSION_ID=xyz123
+claude       # and every subsequent claude invocation in this shell
+```
+
+**3. Per-project persistent** — settings.json `env` block:
+```json
+{
+  "env": {
+    "PEV_SESSION_ID": "xyz123",
+    "PEV_DEBUG": "1"
+  }
+}
+```
+Placed in `<project>/.claude/settings.json` or `~/.claude/settings.json`. Claude Code injects these into every session launched from that scope. Good for stable per-project identifiers.
+
+The hook itself can read them like any other env var:
+
+```bash
+SESSION_ID=${PEV_SESSION_ID:-unknown}
+```
+
+### What env CANNOT do
+
+- **You cannot persist state between hook invocations via env.** Each hook is a fresh bash process; `export FOO=bar` inside the hook dies when the hook exits. The next hook starts with a fresh environment (the same one Claude inherited).
+- **You cannot change Claude's env from inside a hook.** Claude Code doesn't re-read env from hook output — only the exit code and stdout/stderr.
+
+For cross-invocation state, use the filesystem (next section).
+
+### Inspecting env from inside a hook
+
+Drop this single line into a hook during debugging to capture the full env at invocation time:
+
+```bash
+env | sort > /tmp/hook-env-$(date +%s).txt
+```
+
+Or, if you just want to check for a specific set of vars:
+
+```bash
+env | grep -E '^(CLAUDE_|PEV_)' > /tmp/hook-env.txt
+```
+
+Remember the file-redirect pattern from §5.5 — the `>` redirects fd 1 to a file before anything reaches Claude Code. No transcript noise, you read the file manually afterward.
+
+You don't actually need to add this yourself for the initial check — `hook-spike`'s `pev-worktree-scope`-style hook already dumps env on every Read call to `/tmp/hook-spike/hooksjson-control.env`. Trigger any Read while the plugin is installed, inspect that file.
+
+### State persistence patterns (the filesystem)
+
+If env is one-way, and you want a counter or a "did I already do X" flag that survives across hook invocations in a session, write a file. The conventions we use in this marketplace:
+
+| Purpose | Path pattern | Written by | Cleaned up by |
+|---|---|---|---|
+| Per-subagent tool counter | `/tmp/pev-counter-<agent_id>.txt` | `pev-tool-counter.sh` (PostToolUse) | `pev-subagent-stop.sh` (SubagentStop) |
+| Debug trace across a full session | `/tmp/pev-hook-debug.log` | Any hook with the v1.8.2 diagnostic line | User, manually |
+| Hook-input JSON captures (diagnostic) | `/tmp/hook-spike/input-<event>-<tool>.json` | `hook-spike` hooks via `cat > file` | Overwritten per invocation; cleared manually |
+| Canary markers | `/tmp/hook-spike/<name>.fired` | `hook-spike` hooks via `printf > file` | User, manually |
+
+The key design choices worth copying:
+
+- **Key on `agent_id`, not `agent_type`**, when state is per-invocation. `agent_type` collides if the orchestrator dispatches the same agent twice in one session; `agent_id` never does.
+- **Clean up in SubagentStop.** `pev-subagent-stop.sh` removes the counter file when the subagent returns — keeps `/tmp/` from accumulating stale per-run files across sessions.
+- **Use `/tmp/` for transient, `CLAUDE_PLUGIN_DATA` for durable.** `/tmp/` is effectively a scratchpad — OK if it's lost. `CLAUDE_PLUGIN_DATA` persists across claude restarts and is the right place for caches or per-plugin config you genuinely want preserved.
+- **Prefix filenames with your plugin name** to avoid collisions between plugins sharing `/tmp/` (`pev-counter-*`, not `counter-*`).
+
+---
+
 ## 6. Windows gotchas (explicit)
 
 The Windows + git-bash + native-jq stack has three layers of path handling, each with its own assumptions. Here's the list we hit.
