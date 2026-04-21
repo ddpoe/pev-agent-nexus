@@ -88,6 +88,7 @@ case "$CD_TARGET" in
     exit 0
     ;;
   *)
-    echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: 'cd ${CD_TARGET}' is outside the worktree '${WORKTREE_PATH}'. Your cwd is already the worktree — run commands directly without cd.\"}}"
+    echo "BLOCKED: 'cd ${CD_TARGET}' is outside the worktree '${WORKTREE_PATH}'. Your cwd is already the worktree — run commands directly without cd." >&2
+    exit 2
     ;;
 esac
