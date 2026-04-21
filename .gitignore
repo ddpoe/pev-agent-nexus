@@ -1,0 +1,9 @@
+# Windows bash crash dumps
+bash.exe.stackdump
+*.stackdump
+
+# Per-user Claude Code settings (permissions, local overrides)
+.claude/settings.local.json
+
+# Transient PEV worktrees created by EnterWorktree
+.claude/worktrees/
