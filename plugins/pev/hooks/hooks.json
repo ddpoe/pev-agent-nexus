@@ -32,7 +32,7 @@
         ]
       },
       {
-        "matcher": "mcp__cortex__",
+        "matcher": "mcp__cortex__.*",
         "hooks": [
           {
             "type": "command",
