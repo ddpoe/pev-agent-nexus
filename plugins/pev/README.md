@@ -51,7 +51,7 @@ Details in [USER_GUIDE.md](./USER_GUIDE.md#customizing-via-pev-sops).
 
 ## Requirements
 
-- [axiom-graph](https://github.com/ddpoe/cortex) MCP installed and configured in your project — PEV uses it for codebase reads, doc graph, and cycle manifest persistence
+- [axiom-graph](https://github.com/ddpoe/axiom-graph) MCP installed and configured in your project — PEV uses it for codebase reads, doc graph, and cycle manifest persistence
 - A git repository (`/pev-cycle` creates a worktree; `/pev-instance` commits in-place)
 
 ## Status

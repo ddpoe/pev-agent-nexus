@@ -12,7 +12,7 @@ Nothing pending.
 
 ### Changed — BREAKING
 
-- **Cortex package renamed to `axiom_graph`.** Every reference to the cortex MCP server, tool names, config file, data directory, CLI, and TOML sections is renamed throughout the plugin. PEV is now integrated with the `axiom-graph` package, installed via the same GitHub repo (`github.com/ddpoe/cortex` — repo name unchanged, package name changed).
+- **Cortex package and GitHub repo renamed to `axiom-graph`.** Every reference to the cortex MCP server, tool names, config file, data directory, CLI, TOML sections, and repo URL is renamed throughout the plugin. PEV is now integrated with the `axiom-graph` package at `github.com/ddpoe/axiom-graph` (GitHub auto-redirects from the old `github.com/ddpoe/cortex` URL, so existing bookmarks and remotes keep working, but update them for clarity).
 
 ### Rename map
 
@@ -32,7 +32,7 @@ Nothing pending.
 
 ### Migration (required for consumer projects)
 
-1. **Update the MCP package**. Install the renamed `axiom-graph` package (from the same `github.com/ddpoe/cortex` repo).
+1. **Update the MCP package**. Install the renamed `axiom-graph` package (from the same `github.com/ddpoe/axiom-graph` repo).
 2. **Rename the config file**:
    ```bash
    git mv cortex.toml axiom-graph.toml
@@ -56,12 +56,12 @@ Nothing pending.
    ```bash
    axiom-graph build .
    ```
-7. **Rename existing doc IDs** in the cortex database. The `axiom_graph::` prefix in cycle manifests (`docs/pev/cycles/*.json`) is auto-regenerated on the next `axiom-graph build` — no manual edit needed as long as the files are re-indexed.
+7. **Rename existing doc IDs** in the axiom-graph database. The `axiom_graph::` prefix in cycle manifests (`docs/pev/cycles/*.json`) is auto-regenerated on the next `axiom-graph build` — no manual edit needed as long as the files are re-indexed.
 8. **Update `.pev/` SOPs** (`doc-topology.json`, `test-policy.json`, `review-criteria.json`) if you copied the plugin templates — the new templates under `${CLAUDE_PLUGIN_ROOT}/templates/` use `axiom_graph` / `axiom-graph` naming. Consumers who hand-customized their SOPs will have their changes intact; any literal references to "cortex" in project-owned content should be renamed per the rename map above.
 
 ### Non-breaking
 
-- GitHub repo URL unchanged: `https://github.com/ddpoe/cortex` (package inside the repo was renamed; the repo itself retains its name).
+- GitHub auto-redirects the old repo URL (`github.com/ddpoe/cortex` → `github.com/ddpoe/axiom-graph`), so existing git remotes, links, and bookmarks keep working. Update when convenient.
 - Marketplace URL unchanged: `ddpoe/pev-agent-nexus`.
 - `.pev/` SOP file *names* unchanged (`doc-topology.json`, `test-policy.json`, `review-criteria.json`) — only the content that references axiom-graph tools changes.
 
