@@ -8,6 +8,13 @@ Versions loosely follow [Semantic Versioning](https://semver.org/) — major bum
 
 Nothing pending.
 
+## [3.0.1] — 2026-04-21
+
+### Fixed
+- MCP tool prefix corrected from `mcp__axiom_graph__` (underscore) to `mcp__axiom-graph__` (hyphen). The FastMCP server is registered as `axiom-graph` (hyphenated) in the upstream package, so the full Claude Code MCP tool name is `mcp__axiom-graph__axiom_graph_source` — hyphen in the server-name segment, underscore in the function-name segment. v3.0.0 mistakenly used underscore in both segments, which caused all agent tool allowlists to resolve to zero callable tools (agents returned immediately with no tool use). Affects all 6 agent definitions, the hook matcher regex in `hooks.json`, and prose references to the prefix in `DESIGN.md`, `TROUBLESHOOTING.md`, and the `CHANGELOG.md` §3.0.0 rename map.
+
+Consumers already on 3.0.0: update to 3.0.1 via `claude plugin update pev@pev-agent-nexus` and restart.
+
 ## [3.0.0] — 2026-04-21
 
 ### Changed — BREAKING
@@ -18,7 +25,7 @@ Nothing pending.
 
 | Before | After |
 |---|---|
-| MCP tool full names: `mcp__cortex__cortex_*` | `mcp__axiom_graph__axiom_graph_*` |
+| MCP tool full names: `mcp__cortex__cortex_*` | `mcp__axiom-graph__axiom_graph_*` |
 | Tool function names in prose: `cortex_source`, `cortex_update_section`, `cortex_mark_clean`, etc. | `axiom_graph_source`, `axiom_graph_update_section`, `axiom_graph_mark_clean`, etc. |
 | Config file: `cortex.toml` | `axiom-graph.toml` (hyphenated, per upstream package convention) |
 | TOML sections: `[cortex]`, `[cortex.scan]` | `[axiom_graph]`, `[axiom_graph.scan]` |
@@ -27,7 +34,7 @@ Nothing pending.
 | CLI commands: `cortex build`, `cortex check`, `cortex history`, `cortex diff` | `axiom-graph build`, `axiom-graph check`, `axiom-graph history`, `axiom-graph diff` |
 | Python module paths in examples: `cortex.index.db`, `cortex/mcp_server.py` | `axiom_graph.index.db`, `axiom_graph/mcp_server.py` |
 | Hook script filename: `pev-cortex-scope.sh` | `pev-axiom-graph-scope.sh` |
-| Hook matcher regex: `mcp__cortex__.*` | `mcp__axiom_graph__.*` |
+| Hook matcher regex: `mcp__cortex__.*` | `mcp__axiom-graph__.*` |
 | Prose references: "cortex tools", "cortex MCP", "cortex integration", etc. | "axiom-graph tools", "axiom-graph MCP", "axiom-graph integration", etc. |
 
 ### Migration (required for consumer projects)
@@ -137,7 +144,7 @@ Full migration in [`plugins/pev/SETUP.md`](./plugins/pev/SETUP.md#pre-200--any-2
 
 ### Fixed
 - `grep -oP` in `pev-bash-scope.sh` fails silently on systems without UTF-8 locale (the hook execution environment on Windows git-bash hits this). Replaced with POSIX `sed` (#8).
-- `pev-axiom-graph-scope.sh` matcher `"mcp__axiom_graph__"` never fired — Claude Code matchers require full-string regex match. Changed to `"mcp__axiom_graph__.*"` (#8).
+- `pev-axiom-graph-scope.sh` matcher `"mcp__axiom-graph__"` never fired — Claude Code matchers require full-string regex match. Changed to `"mcp__axiom-graph__.*"` (#8).
 
 ## [1.8.4] — 2026-04-21
 

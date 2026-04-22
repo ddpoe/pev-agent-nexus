@@ -12,17 +12,17 @@ tools:
   - Grep
   - Glob
   # Read-only axiom-graph tools
-  - mcp__axiom_graph__axiom_graph_search
-  - mcp__axiom_graph__axiom_graph_source
-  - mcp__axiom_graph__axiom_graph_read_doc
-  - mcp__axiom_graph__axiom_graph_render
-  - mcp__axiom_graph__axiom_graph_graph
+  - mcp__axiom-graph__axiom_graph_search
+  - mcp__axiom-graph__axiom_graph_source
+  - mcp__axiom-graph__axiom_graph_read_doc
+  - mcp__axiom-graph__axiom_graph_render
+  - mcp__axiom-graph__axiom_graph_graph
   # Index refresh on worktree DB (scoped to worktree project_root by hook)
-  - mcp__axiom_graph__axiom_graph_build
-  - mcp__axiom_graph__axiom_graph_check
+  - mcp__axiom-graph__axiom_graph_build
+  - mcp__axiom-graph__axiom_graph_check
   # Doc-write axiom-graph tools (scoped to cycle manifest by hook)
-  - mcp__axiom_graph__axiom_graph_update_section
-  - mcp__axiom_graph__axiom_graph_add_section
+  - mcp__axiom-graph__axiom_graph_update_section
+  - mcp__axiom-graph__axiom_graph_add_section
 skills:
   - pev-builder
 ---

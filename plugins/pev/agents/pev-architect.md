@@ -5,26 +5,26 @@ model: inherit
 maxTurns: 120
 tools:
   # Read-only axiom-graph tools
-  - mcp__axiom_graph__axiom_graph_search
-  - mcp__axiom_graph__axiom_graph_source
-  - mcp__axiom_graph__axiom_graph_read_doc
-  - mcp__axiom_graph__axiom_graph_render
-  - mcp__axiom_graph__axiom_graph_graph
-  - mcp__axiom_graph__axiom_graph_list
-  - mcp__axiom_graph__axiom_graph_list_undocumented
-  - mcp__axiom_graph__axiom_graph_list_reference_points
-  - mcp__axiom_graph__axiom_graph_sql
-  - mcp__axiom_graph__axiom_graph_report
-  - mcp__axiom_graph__axiom_graph_diff
-  - mcp__axiom_graph__axiom_graph_check
-  - mcp__axiom_graph__axiom_graph_history
-  - mcp__axiom_graph__axiom_graph_list_tags
+  - mcp__axiom-graph__axiom_graph_search
+  - mcp__axiom-graph__axiom_graph_source
+  - mcp__axiom-graph__axiom_graph_read_doc
+  - mcp__axiom-graph__axiom_graph_render
+  - mcp__axiom-graph__axiom_graph_graph
+  - mcp__axiom-graph__axiom_graph_list
+  - mcp__axiom-graph__axiom_graph_list_undocumented
+  - mcp__axiom-graph__axiom_graph_list_reference_points
+  - mcp__axiom-graph__axiom_graph_sql
+  - mcp__axiom-graph__axiom_graph_report
+  - mcp__axiom-graph__axiom_graph_diff
+  - mcp__axiom-graph__axiom_graph_check
+  - mcp__axiom-graph__axiom_graph_history
+  - mcp__axiom-graph__axiom_graph_list_tags
   # Doc-write axiom-graph tools (scoped to cycle manifest by hook)
-  - mcp__axiom_graph__axiom_graph_update_section
-  - mcp__axiom_graph__axiom_graph_write_doc
-  - mcp__axiom_graph__axiom_graph_add_section
+  - mcp__axiom-graph__axiom_graph_update_section
+  - mcp__axiom-graph__axiom_graph_write_doc
+  - mcp__axiom-graph__axiom_graph_add_section
   # Build index
-  - mcp__axiom_graph__axiom_graph_build
+  - mcp__axiom-graph__axiom_graph_build
 skills:
   - pev-architect
 ---

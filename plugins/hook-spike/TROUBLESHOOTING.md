@@ -461,11 +461,11 @@ Things we tried that didn't work, plus the evidence and the fix.
 
 ### 7.2 Bare prefix matcher doesn't fire
 
-**Symptom:** A hook registered with `"matcher": "mcp__axiom_graph__"` does not fire for `mcp__axiom_graph__axiom_graph_source`. No error, no log entry.
+**Symptom:** A hook registered with `"matcher": "mcp__axiom-graph__"` does not fire for `mcp__axiom-graph__axiom_graph_source`. No error, no log entry.
 
 **Evidence:** Absence of log entries in `/tmp/pev-hook-debug.log` for that matcher, despite the subagent clearly calling the tool.
 
-**Fix:** Claude Code matchers appear to require full-string match. Use `"mcp__axiom_graph__.*"` or an explicit alternation like `"mcp__axiom_graph__axiom_graph_source|mcp__axiom_graph__axiom_graph_graph"`.
+**Fix:** Claude Code matchers appear to require full-string match. Use `"mcp__axiom-graph__.*"` or an explicit alternation like `"mcp__axiom-graph__axiom_graph_source|mcp__axiom-graph__axiom_graph_graph"`.
 
 ### 7.3 `${CLAUDE_PLUGIN_ROOT}` in agent frontmatter is unclear
 

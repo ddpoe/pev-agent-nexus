@@ -22,7 +22,7 @@
         ]
       },
       {
-        "matcher": "mcp__axiom_graph__axiom_graph_update_section|mcp__axiom_graph__axiom_graph_write_doc|mcp__axiom_graph__axiom_graph_add_section",
+        "matcher": "mcp__axiom-graph__axiom_graph_update_section|mcp__axiom-graph__axiom_graph_write_doc|mcp__axiom-graph__axiom_graph_add_section",
         "hooks": [
           {
             "type": "command",
@@ -32,7 +32,7 @@
         ]
       },
       {
-        "matcher": "mcp__axiom_graph__.*",
+        "matcher": "mcp__axiom-graph__.*",
         "hooks": [
           {
             "type": "command",

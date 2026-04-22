@@ -97,7 +97,7 @@ Tool-budget counters are per-subagent-invocation. The `agent_id` field in stdin 
 | `pev-worktree-scope.sh` | PreToolUse (Write/Edit) | Blocks writes outside the worktree |
 | `pev-bash-scope.sh` | PreToolUse (Bash) | Blocks `cd` out of the worktree |
 | `pev-doc-scope.sh` | PreToolUse (axiom-graph doc-write tools) | Restricts doc writes to the cycle manifest |
-| `pev-axiom-graph-scope.sh` | PreToolUse (mcp__axiom_graph__.*) | Enforces axiom-graph `project_root` matches worktree |
+| `pev-axiom-graph-scope.sh` | PreToolUse (mcp__axiom-graph__.*) | Enforces axiom-graph `project_root` matches worktree |
 | `pev-tool-gate.sh` | PreToolUse (.*) | Post-budget allowlist gate |
 | `pev-tool-counter.sh` | PostToolUse (.*) | Increments counter; emits budget advisories |
 | `pev-subagent-stop.sh` | SubagentStop | Counter cleanup + Builder axiom-graph rebuild |
@@ -200,7 +200,7 @@ These are cross-platform and cross-Claude-Code-version issues that shaped the pl
 - **Windows `cwd` in hook JSON uses backslashes** — hooks must `cygpath -u` before building state-file paths. Without this, `[ -f ]` tests fall open.
 - **Native Windows jq cannot open POSIX paths** — `jq -r '...' "$STATE_FILE"` returns empty when `$STATE_FILE` starts with `/c/`. Hook scripts use `cat "$STATE_FILE" | jq -r '...'` to work around.
 - **`grep -oP` requires a UTF-8 locale** which the hook execution env doesn't reliably set. All PCRE uses replaced with POSIX `sed`.
-- **Hook matchers are full-string regex.** `"mcp__axiom_graph__"` does not match `mcp__axiom_graph__axiom_graph_source`; use `"mcp__axiom_graph__.*"`.
+- **Hook matchers are full-string regex.** `"mcp__axiom-graph__"` does not match `mcp__axiom-graph__axiom_graph_source`; use `"mcp__axiom-graph__.*"`.
 - **Agent-frontmatter hooks silently no-op** in marketplace plugin installs. All PEV hooks live in `plugins/pev/hooks/hooks.json`, none in agent frontmatter.
 - **Slash commands through `claude -p` on git-bash need `MSYS_NO_PATHCONV=1`** or the slash becomes a mangled filesystem path.
 

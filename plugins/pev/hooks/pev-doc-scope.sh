@@ -42,14 +42,14 @@ fi
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // ""')
 
 case "$TOOL" in
-  mcp__axiom_graph__axiom_graph_update_section)
+  mcp__axiom-graph__axiom_graph_update_section)
     SECTION_ID=$(echo "$INPUT" | jq -r '.tool_input.section_id // ""')
     TARGET=$(echo "$SECTION_ID" | sed 's/::[^:]*$//')
     ;;
-  mcp__axiom_graph__axiom_graph_add_section)
+  mcp__axiom-graph__axiom_graph_add_section)
     TARGET=$(echo "$INPUT" | jq -r '.tool_input.doc_id // ""')
     ;;
-  mcp__axiom_graph__axiom_graph_write_doc)
+  mcp__axiom-graph__axiom_graph_write_doc)
     DOC_JSON=$(echo "$INPUT" | jq -r '.tool_input.doc_json // ""')
     if echo "$DOC_JSON" | jq -e . >/dev/null 2>&1; then
       TARGET=$(echo "$DOC_JSON" | jq -r '.id // ""')

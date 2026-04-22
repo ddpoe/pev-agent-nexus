@@ -12,14 +12,14 @@ tools:
   - Grep
   - Glob
   # Read-only axiom-graph tools (these get blocked by gate)
-  - mcp__axiom_graph__axiom_graph_search
-  - mcp__axiom_graph__axiom_graph_source
-  - mcp__axiom_graph__axiom_graph_read_doc
-  - mcp__axiom_graph__axiom_graph_render
-  - mcp__axiom_graph__axiom_graph_graph
+  - mcp__axiom-graph__axiom_graph_search
+  - mcp__axiom-graph__axiom_graph_source
+  - mcp__axiom-graph__axiom_graph_read_doc
+  - mcp__axiom-graph__axiom_graph_render
+  - mcp__axiom-graph__axiom_graph_graph
   # Doc-write axiom-graph tools (scoped by doc-scope hook, allowlisted past gate)
-  - mcp__axiom_graph__axiom_graph_update_section
-  - mcp__axiom_graph__axiom_graph_add_section
+  - mcp__axiom-graph__axiom_graph_update_section
+  - mcp__axiom-graph__axiom_graph_add_section
 skills:
   - pev-spike
 ---
