@@ -8,11 +8,68 @@ Versions loosely follow [Semantic Versioning](https://semver.org/) — major bum
 
 Nothing pending.
 
+## [3.0.0] — 2026-04-21
+
+### Changed — BREAKING
+
+- **Cortex package renamed to `axiom_graph`.** Every reference to the cortex MCP server, tool names, config file, data directory, CLI, and TOML sections is renamed throughout the plugin. PEV is now integrated with the `axiom-graph` package, installed via the same GitHub repo (`github.com/ddpoe/cortex` — repo name unchanged, package name changed).
+
+### Rename map
+
+| Before | After |
+|---|---|
+| MCP tool full names: `mcp__cortex__cortex_*` | `mcp__axiom_graph__axiom_graph_*` |
+| Tool function names in prose: `cortex_source`, `cortex_update_section`, `cortex_mark_clean`, etc. | `axiom_graph_source`, `axiom_graph_update_section`, `axiom_graph_mark_clean`, etc. |
+| Config file: `cortex.toml` | `axiom-graph.toml` (hyphenated, per upstream package convention) |
+| TOML sections: `[cortex]`, `[cortex.scan]` | `[axiom_graph]`, `[axiom_graph.scan]` |
+| Doc ID prefix: `cortex::...` | `axiom_graph::...` |
+| Data directory: `.cortex/` | `.axiom_graph/` |
+| CLI commands: `cortex build`, `cortex check`, `cortex history`, `cortex diff` | `axiom-graph build`, `axiom-graph check`, `axiom-graph history`, `axiom-graph diff` |
+| Python module paths in examples: `cortex.index.db`, `cortex/mcp_server.py` | `axiom_graph.index.db`, `axiom_graph/mcp_server.py` |
+| Hook script filename: `pev-cortex-scope.sh` | `pev-axiom-graph-scope.sh` |
+| Hook matcher regex: `mcp__cortex__.*` | `mcp__axiom_graph__.*` |
+| Prose references: "cortex tools", "cortex MCP", "cortex integration", etc. | "axiom-graph tools", "axiom-graph MCP", "axiom-graph integration", etc. |
+
+### Migration (required for consumer projects)
+
+1. **Update the MCP package**. Install the renamed `axiom-graph` package (from the same `github.com/ddpoe/cortex` repo).
+2. **Rename the config file**:
+   ```bash
+   git mv cortex.toml axiom-graph.toml
+   ```
+3. **Rewrite TOML section headers** in `axiom-graph.toml`:
+   ```diff
+   -[cortex]
+   +[axiom_graph]
+   project_id = "..."
+
+   -[cortex.scan]
+   +[axiom_graph.scan]
+   doc_dirs = ["docs", ".pev"]
+   ```
+4. **Rename the data directory**:
+   ```bash
+   git mv .cortex .axiom_graph   # if committed, otherwise plain mv
+   ```
+5. **Update your Claude Code MCP config** (the place where your axiom-graph MCP server is registered) to use the new server name/binary.
+6. **Rebuild the index** on the new package:
+   ```bash
+   axiom-graph build .
+   ```
+7. **Rename existing doc IDs** in the cortex database. The `axiom_graph::` prefix in cycle manifests (`docs/pev/cycles/*.json`) is auto-regenerated on the next `axiom-graph build` — no manual edit needed as long as the files are re-indexed.
+8. **Update `.pev/` SOPs** (`doc-topology.json`, `test-policy.json`, `review-criteria.json`) if you copied the plugin templates — the new templates under `${CLAUDE_PLUGIN_ROOT}/templates/` use `axiom_graph` / `axiom-graph` naming. Consumers who hand-customized their SOPs will have their changes intact; any literal references to "cortex" in project-owned content should be renamed per the rename map above.
+
+### Non-breaking
+
+- GitHub repo URL unchanged: `https://github.com/ddpoe/cortex` (package inside the repo was renamed; the repo itself retains its name).
+- Marketplace URL unchanged: `ddpoe/pev-agent-nexus`.
+- `.pev/` SOP file *names* unchanged (`doc-topology.json`, `test-policy.json`, `review-criteria.json`) — only the content that references axiom-graph tools changes.
+
 ## [2.2.0] — 2026-04-21
 
 ### Added
-- **Friction logs** — each phase-agent (Architect, Builder, Reviewer, Auditor, Doc Reviewer) and the orchestrator now owns a `{agent}.friction` section in the cycle manifest. Agents append in-the-moment observations when something pinches during work — instructions that didn't fit the situation, tool output that was awkward, role constraints that forced workarounds, upstream inputs that required guessing, effort disproportionate to value. Initiative-based (not gated), append-as-you-go (not post-hoc summary). Entries follow a short-tag + raw-context-paste format documented in each skill. Empty sections are expected and acceptable — value compounds across cycles as `cortex_search` surfaces recurring tags. `/pev-instance` carries the same mechanism via a `friction` section in the checkin doc scaffold.
-- `USER_GUIDE.md` §Friction logs — how to surface patterns via `cortex_search`, recommended read cadence, and the distinction between `decisions` / `builder.deviations` / `{agent}.friction` as three overlapping-but-distinct accumulating sections.
+- **Friction logs** — each phase-agent (Architect, Builder, Reviewer, Auditor, Doc Reviewer) and the orchestrator now owns a `{agent}.friction` section in the cycle manifest. Agents append in-the-moment observations when something pinches during work — instructions that didn't fit the situation, tool output that was awkward, role constraints that forced workarounds, upstream inputs that required guessing, effort disproportionate to value. Initiative-based (not gated), append-as-you-go (not post-hoc summary). Entries follow a short-tag + raw-context-paste format documented in each skill. Empty sections are expected and acceptable — value compounds across cycles as `axiom_graph_search` surfaces recurring tags. `/pev-instance` carries the same mechanism via a `friction` section in the checkin doc scaffold.
+- `USER_GUIDE.md` §Friction logs — how to surface patterns via `axiom_graph_search`, recommended read cadence, and the distinction between `decisions` / `builder.deviations` / `{agent}.friction` as three overlapping-but-distinct accumulating sections.
 
 ## [2.1.3] — 2026-04-21
 
@@ -23,7 +80,7 @@ Nothing pending.
 ## [2.1.0] — 2026-04-21
 
 ### Added
-- Project SOPs are now DocJSON (`.json` instead of `.md`) so cortex can index them when a project adds `.pev` to `doc_dirs` under `[cortex.scan]` in `cortex.toml`. LLM agents parse JSON fine; content fields remain markdown (#15).
+- Project SOPs are now DocJSON (`.json` instead of `.md`) so axiom-graph can index them when a project adds `.pev` to `doc_dirs` under `[axiom_graph.scan]` in `axiom-graph.toml`. LLM agents parse JSON fine; content fields remain markdown (#15).
 - `doc-topology.json` schema gains `Auditor action` field — the Auditor now reads the topology and proactively updates guide-listed doc categories during post-implementation. Boundary shifts from "Auditor = graph-only" to "Auditor = graph + guide-listed." Doc Reviewer stays as verifier + gap catcher (#15).
 
 ### Changed
@@ -42,7 +99,7 @@ Step-by-step commands in [`plugins/pev/SETUP.md`](./plugins/pev/SETUP.md#20x--21
 ### Added
 - New `/pev-instance` skill — slim single-agent cycle for small tasks. Mini-pitch → human gate → implement → structured self-review → checkin doc at `docs/pev/instances/<id>.json`. Escalates proactively to `/pev-cycle` when scope outgrows (#14).
 - Reviewer Pass 5d — forward-looking workflow taxonomy hygiene. Flags new core-mechanism candidates, marker extensions, and split candidates. Severity always `minor`/`suggestion`, never blocks merge (#14).
-- `cortex_workflow_list(steps=true)` framed as authoritative "developer-declared core mechanisms" signal, used consistently across Reviewer Pass 3/4/5c and `/pev-instance` escalation (#14).
+- `axiom_graph_workflow_list(steps=true)` framed as authoritative "developer-declared core mechanisms" signal, used consistently across Reviewer Pass 3/4/5c and `/pev-instance` escalation (#14).
 
 ### Changed — BREAKING
 - Cycle docs relocated from `docs/pev-cycles/` → `docs/pev/cycles/`. Cortex doc IDs: `docs.pev-cycles.*` → `docs.pev.cycles.*`.
@@ -50,7 +107,7 @@ Step-by-step commands in [`plugins/pev/SETUP.md`](./plugins/pev/SETUP.md#20x--21
 ### Migration
 ```bash
 mv docs/pev-cycles docs/pev/cycles
-cortex build   # re-index at new paths
+axiom-graph build   # re-index at new paths
 ```
 
 Full migration in [`plugins/pev/SETUP.md`](./plugins/pev/SETUP.md#pre-200--any-2x) §Migration (Pre-2.0.0 → any 2.x).
@@ -80,13 +137,13 @@ Full migration in [`plugins/pev/SETUP.md`](./plugins/pev/SETUP.md#pre-200--any-2
 
 ### Fixed
 - `grep -oP` in `pev-bash-scope.sh` fails silently on systems without UTF-8 locale (the hook execution environment on Windows git-bash hits this). Replaced with POSIX `sed` (#8).
-- `pev-cortex-scope.sh` matcher `"mcp__cortex__"` never fired — Claude Code matchers require full-string regex match. Changed to `"mcp__cortex__.*"` (#8).
+- `pev-axiom-graph-scope.sh` matcher `"mcp__axiom_graph__"` never fired — Claude Code matchers require full-string regex match. Changed to `"mcp__axiom_graph__.*"` (#8).
 
 ## [1.8.4] — 2026-04-21
 
 ### Fixed
 - `pev-bash-scope.sh` block path now uses `echo "reason" >&2; exit 2` instead of emitting `hookSpecificOutput` JSON on stdout — the JSON-only approach did not reliably trigger a block (#7).
-- Added diagnostic logging to `pev-cortex-scope.sh` around its comparison to enable tracing (later removed in 1.9.1).
+- Added diagnostic logging to `pev-axiom-graph-scope.sh` around its comparison to enable tracing (later removed in 1.9.1).
 
 ## [1.8.3] — 2026-04-21
 
@@ -110,7 +167,7 @@ Full migration in [`plugins/pev/SETUP.md`](./plugins/pev/SETUP.md#pre-200--any-2
 - `.pev-state.json` schema simplified: `counter_file` field removed (counter now keyed on `agent_id` from hook input). Per-phase state updates by the orchestrator eliminated.
 
 ### Added
-- `pev-subagent-stop.sh` — unified SubagentStop hook, replaces per-agent stop hooks. Cleans up counter files universally, runs `cortex build` on worktree when the Builder returns.
+- `pev-subagent-stop.sh` — unified SubagentStop hook, replaces per-agent stop hooks. Cleans up counter files universally, runs `axiom-graph build` on worktree when the Builder returns.
 
 ### Removed
 - All 6 agent frontmatter `hooks:` blocks (architect, auditor, builder, doc-reviewer, reviewer, spike). The blocks don't fire in plugin installs — their behavior is now in shared scripts dispatched on `agent_type`.

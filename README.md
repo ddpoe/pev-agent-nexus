@@ -4,7 +4,7 @@ Claude Code plugin marketplace. Two plugins:
 
 | Plugin | Purpose |
 |---|---|
-| [`pev`](./plugins/pev/) | Plan-Execute-Validate agent workflow for structured code changes — Architect, Builder, Reviewer, Auditor, and Doc Reviewer subagents with cortex integration. Includes `/pev-cycle` (full multi-agent workflow), `/pev-instance` (slim single-agent mode), and `/pev-spike` (infrastructure smoke test). |
+| [`pev`](./plugins/pev/) | Plan-Execute-Validate agent workflow for structured code changes — Architect, Builder, Reviewer, Auditor, and Doc Reviewer subagents with axiom-graph integration. Includes `/pev-cycle` (full multi-agent workflow), `/pev-instance` (slim single-agent mode), and `/pev-spike` (infrastructure smoke test). |
 | [`hook-spike`](./plugins/hook-spike/) | Minimal plugin-hook test harness. Install when debugging plugin hooks that silently fail. |
 
 ## Install

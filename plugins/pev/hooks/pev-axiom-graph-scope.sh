@@ -1,6 +1,6 @@
 #!/bin/bash
-# pev-cortex-scope.sh — PreToolUse hook for cortex MCP tools.
-# Enforces that cortex calls use the worktree's project_root, not the
+# pev-axiom-graph-scope.sh — PreToolUse hook for axiom-graph MCP tools.
+# Enforces that axiom-graph calls use the worktree's project_root, not the
 # main repo.
 #
 # Active ONLY when agent_type starts with "pev:" (a PEV subagent).
@@ -52,7 +52,7 @@ fi
 TOOL_PROJECT_ROOT=$(echo "$INPUT" | jq -r '.tool_input.project_root // empty' 2>/dev/null)
 
 if [ -z "$TOOL_PROJECT_ROOT" ]; then
-  echo "BLOCKED: cortex tool call missing project_root parameter" >&2
+  echo "BLOCKED: axiom-graph tool call missing project_root parameter" >&2
   exit 2
 fi
 
@@ -69,5 +69,5 @@ if [ "$TOOL_PROJECT_ROOT" = "$WORKTREE_PATH" ]; then
 fi
 
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
-echo "BLOCKED: cortex project_root '$TOOL_PROJECT_ROOT' does not match worktree '$WORKTREE_PATH' (tool: $TOOL_NAME)" >&2
+echo "BLOCKED: axiom-graph project_root '$TOOL_PROJECT_ROOT' does not match worktree '$WORKTREE_PATH' (tool: $TOOL_NAME)" >&2
 exit 2

@@ -18,7 +18,7 @@ You coordinate a Plan-Execute-Validate cycle by dispatching subagents and managi
 - `test-policy.json` — test tiers, annotation contract, coverage expectations
 - `review-criteria.json` — Reviewer's project-specific emphasis (optional)
 
-Subagents read these from `{worktree_path}/.pev/` since worktrees check out the same tree. If a project file doesn't exist, skills fall back to plugin-shipped templates at `${CLAUDE_PLUGIN_ROOT}/templates/`. SOPs are DocJSON so cortex can index them if `.pev` is added to `doc_dirs` under `[cortex.scan]` in `cortex.toml` (optional — skills read via the Read tool regardless). See `plugins/pev/USER_GUIDE.md` for the full convention.
+Subagents read these from `{worktree_path}/.pev/` since worktrees check out the same tree. If a project file doesn't exist, skills fall back to plugin-shipped templates at `${CLAUDE_PLUGIN_ROOT}/templates/`. SOPs are DocJSON so axiom-graph can index them if `.pev` is added to `doc_dirs` under `[axiom_graph.scan]` in `axiom-graph.toml` (optional — skills read via the Read tool regardless). See `plugins/pev/USER_GUIDE.md` for the full convention.
 
 ## Git Command Convention
 
@@ -53,9 +53,9 @@ Capture baseline SHA (`git rev-parse HEAD`).
 
 **Worktree base verification**: `EnterWorktree` may base the branch on the remote tracking branch instead of local HEAD. Verify: run `git rev-parse HEAD` in the worktree and compare against the baseline SHA captured above. If they differ, the worktree is on a different commit (likely remote main). Fix it: `git rebase {baseline_sha}` in the worktree to align with local HEAD.
 
-Then `poetry install`, `cortex_checkout` to copy cortex DB. See ref: `worktree-commands`.
+Then `poetry install`, `axiom_graph_checkout` to copy axiom-graph DB. See ref: `worktree-commands`.
 
-Read `cortex.toml` in the project root to get the `project_id` value. The cycle doc ID is `{project_id}::docs.pev.cycles.{cycle-id}` — do NOT hardcode the prefix, it varies per project.
+Read `axiom-graph.toml` in the project root to get the `project_id` value. The cycle doc ID is `{project_id}::docs.pev.cycles.{cycle-id}` — do NOT hardcode the prefix, it varies per project.
 
 **Write `.pev-state.json` to the worktree root** (cwd after `EnterWorktree`) — see ref: `state-file`. Include `worktree_path` and `cycle_doc_id` (`{project_id}::docs.pev.cycles.{cycle-id}`). Hooks read the `cwd` field from their input and find `.pev-state.json` at that root. Per-worktree state enables parallel PEV cycles. Tool-budget counters are keyed on the subagent's `agent_id` (from hook input) — no counter_file field needed.
 
@@ -71,7 +71,7 @@ Handle returns:
   2. If `doc_edits` is present, handle source document edit proposals:
      - For each proposed edit, present to the user: "The Architect proposes updating **{doc_id}** section `{section_id}`: {reason}. Current: {current_summary}. Proposed change: {proposed_content}. **Approve or reject?**"
      - Use AskUserQuestion with options: "Approve" / "Reject" / "Reject with note" for each edit. Batch up to 4 edits per AskUserQuestion call (the schema limit).
-     - For approved edits: apply via `cortex_update_section(section_id="{section_id}", content="{proposed_content}")`. Record result as `{"section_id": "...", "status": "applied"}`.
+     - For approved edits: apply via `axiom_graph_update_section(section_id="{section_id}", content="{proposed_content}")`. Record result as `{"section_id": "...", "status": "applied"}`.
      - For rejected edits: record as `{"section_id": "...", "status": "rejected", "user_note": "..."}`.
   3. If `questions` is present, relay to the user via AskUserQuestion (existing behavior).
   4. Resume with SendMessage containing: `{"answers": {...}, "doc_edit_results": [...], "context": "...architect's context..."}`. Omit `doc_edit_results` if no `doc_edits` were proposed.
@@ -95,7 +95,7 @@ Read the cycle manifest. Present the Architect's pitch sections to the user in t
 
 ### 4. Build
 
-**Before dispatching**, read the Architect's pitch from the cycle manifest and inline it into the Builder dispatch prompt (see ref: `builder-context-handoff`). The Builder uses cortex tools to read source on demand from the worktree's cortex DB snapshot.
+**Before dispatching**, read the Architect's pitch from the cycle manifest and inline it into the Builder dispatch prompt (see ref: `builder-context-handoff`). The Builder uses axiom-graph tools to read source on demand from the worktree's axiom-graph DB snapshot.
 
 Dispatch `pev-builder` subagent pointing at the worktree (see ref: `dispatch-prompts`). Do NOT use `isolation: "worktree"`.
 
@@ -105,11 +105,11 @@ Handle status codes:
 - **DONE**: Write manifest to `builder.manifest` section of cycle doc. Proceed to Phase 5.
 - **DONE_WITH_CONCERNS**: Present concerns to user with options: (1) proceed to review, (2) redispatch Builder to address concerns (treat as CONTINUING — same worktree), (3) abort.
 - **BLOCKED / NEEDS_CONTEXT**: Present to user. Options: provide guidance and redispatch, or abort (set status to `incomplete`).
-- **CONTINUING** (or no separator — maxTurns cutoff): The Builder's plan and progress are already in the manifest (it writes them as it works). Write checkpoint to manifest. The Builder's `SubagentStop` hook has already rebuilt the worktree cortex index. Increment incarnation, redispatch to same worktree.
+- **CONTINUING** (or no separator — maxTurns cutoff): The Builder's plan and progress are already in the manifest (it writes them as it works). Write checkpoint to manifest. The Builder's `SubagentStop` hook has already rebuilt the worktree axiom-graph index. Increment incarnation, redispatch to same worktree.
 
 ### 5. Review
 
-The Builder's `SubagentStop` hook has already rebuilt the worktree cortex index, so the Reviewer's `cortex_check`, `cortex_diff`, and `cortex_source` calls reflect the Builder's changes.
+The Builder's `SubagentStop` hook has already rebuilt the worktree axiom-graph index, so the Reviewer's `axiom_graph_check`, `axiom_graph_diff`, and `axiom_graph_source` calls reflect the Builder's changes.
 
 Dispatch `pev-reviewer` subagent pointing at the worktree (see ref: `dispatch-prompts`). The Reviewer is read-only — it cannot modify code or docs.
 
@@ -117,7 +117,7 @@ The Reviewer performs a six-pass review:
 0. **Run tests** — full test suite, immediate FAIL if tests don't pass
 1. **Source document cross-check** — pitch vs referenced ADRs/PRDs for contradictions
 2. **Spec compliance** — reverse mapping (every change authorized?), forward check (every story implemented?), deviation tribunal (Builder decisions justified?)
-3. **Functionality preservation** — callers checked via cortex_graph, behavioral changes flagged
+3. **Functionality preservation** — callers checked via axiom_graph_graph, behavioral changes flagged
 4. **Code quality** — issues ranked critical/important/minor
 5. **PEV-specific checks** — logging, test annotations, workflow markers
 
@@ -136,21 +136,21 @@ Parse return — extract JSON verdict from `---REVIEW---` separator. Write the r
 Handle status codes:
 - **PASS**: Write review to cycle doc. Present test coverage table. "Review passed. Test coverage above. Approve to merge, or request Builder to add/change tests?"
 - **PASS_WITH_CONCERNS**: Write review to cycle doc. Present concerns and test coverage table to user. Options: (1) proceed to merge, (2) redispatch Builder to fix concerns or improve test coverage, then re-review.
-- **FAIL**: Write review to cycle doc. Present failures and test coverage table to user. Redispatch Builder with the specific failures to fix (same worktree). The Builder's `SubagentStop` hook rebuilds the cortex index; then re-dispatch Reviewer. Max 2 review-fix loops before escalating to user.
+- **FAIL**: Write review to cycle doc. Present failures and test coverage table to user. Redispatch Builder with the specific failures to fix (same worktree). The Builder's `SubagentStop` hook rebuilds the axiom-graph index; then re-dispatch Reviewer. Max 2 review-fix loops before escalating to user.
 - **Source doc CONTRADICTION in review**: If the Reviewer finds a CONTRADICTION between the pitch and a source document, this is a special case. The Builder implemented the pitch correctly — the pitch itself is wrong. Present to user: "The Reviewer found that the Architect's pitch contradicts [source doc]. The Builder implemented the pitch as written, but the pitch is inconsistent with upstream requirements. Options: (1) abort and re-plan with a new Architect dispatch, (2) proceed to merge knowing the contradiction exists." **HUMAN GATE**.
 - **NEEDS_INPUT**: Relay the Reviewer's questions to the user via AskUserQuestion (same proxy-question protocol as the Architect). Resume with SendMessage containing the answers and the Reviewer's `context` field.
 
 ### 6. Merge
 
-The Builder's `SubagentStop` hook has already rebuilt the worktree cortex index. Run `cortex_check(project_root=worktree_path)` to surface staleness info for the merge summary.
+The Builder's `SubagentStop` hook has already rebuilt the worktree axiom-graph index. Run `axiom_graph_check(project_root=worktree_path)` to surface staleness info for the merge summary.
 
 Construct change-set from `git diff {baseline_sha}..HEAD` + Builder manifest. Write Builder manifest and change-set to cycle doc.
 
-**HUMAN GATE** — Present implementation summary (files changed, tests, review verdict, deviations, cortex check results). "Approve to merge into main and proceed to Auditor phase, or provide feedback?"
+**HUMAN GATE** — Present implementation summary (files changed, tests, review verdict, deviations, axiom-graph check results). "Approve to merge into main and proceed to Auditor phase, or provide feedback?"
 
 - **Rejected**: Discuss options — redispatch Builder with feedback.
 
-Safety-net commit: check worktree for uncommitted changes and commit them before merging (see ref: `merge-commands`). Call `ExitWorktree(action="keep")` to return to main repo root. Merge worktree branch into main, remove worktree/branch. Rebuild cortex on main. Single commit with structured message (see ref: `commit-format`). Capture commit SHA.
+Safety-net commit: check worktree for uncommitted changes and commit them before merging (see ref: `merge-commands`). Call `ExitWorktree(action="keep")` to return to main repo root. Merge worktree branch into main, remove worktree/branch. Rebuild axiom-graph on main. Single commit with structured message (see ref: `commit-format`). Capture commit SHA.
 
 The worktree's `.pev-state.json` was removed with the worktree. The Auditor's state file is handled separately in Phase 7.
 
@@ -205,7 +205,7 @@ Clean up state file (`rm -f .pev-state.json` from main repo root — last writte
 
 Capture friction as you work — subagent dispatch and return edges, phase-transition steps that didn't fit the situation, human-gate interactions that felt clunky, tool or hook behavior that surprised you, orchestration gaps this skill didn't cover, effort disproportionate to value, etc. The list isn't exhaustive — surface whatever felt off, even if it's not one of these shapes. Append to `{cycle_doc_id}::orchestrator.friction` when something pinches — not as a Phase 8 summary, but as you notice it. The specifics (the exact error, the unexpected output, the user exchange) are gone if you wait.
 
-Read the existing section first so you don't overwrite prior entries, then `cortex_update_section` with existing + new.
+Read the existing section first so you don't overwrite prior entries, then `axiom_graph_update_section` with existing + new.
 
 Entry format:
 
@@ -222,5 +222,5 @@ Empty is fine. Honest emptiness beats invented friction.
 - **Agent dispatch failure**: Check `.claude/agents/pev-{agent}.md` exists; suggest `/agents` to reload.
 - **Worktree failure**: Check `git worktree list` for stale entries.
 - **Merge conflicts**: Present to user and resolve before proceeding.
-- **cortex_check hangs**: Timeout and retry; if persistent, proceed with manual review scope from Builder's change-set.
+- **axiom_graph_check hangs**: Timeout and retry; if persistent, proceed with manual review scope from Builder's change-set.
 - **Failure at any point**: Update status to `incomplete`. Keep `pev-active` tag so the cycle can be resumed.

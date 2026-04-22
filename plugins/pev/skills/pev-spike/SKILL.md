@@ -24,9 +24,9 @@ Record the worktree path (cwd after EnterWorktree). Record the main repo path fr
 poetry install
 ```
 
-Copy cortex DB into worktree:
+Copy axiom-graph DB into worktree:
 ```
-cortex_checkout(
+axiom_graph_checkout(
   project_root="{main_repo_path}",
   worktree_path="{worktree_path}"
 )
@@ -34,16 +34,16 @@ cortex_checkout(
 
 ### 3. Create spike manifest
 
-Create a minimal cortex doc for the spike so doc-scope has something to test against:
+Create a minimal axiom-graph doc for the spike so doc-scope has something to test against:
 
 ```
-cortex_write_doc(
+axiom_graph_write_doc(
   project_root="{worktree_path}",
   doc_json='{"title": "PEV Spike Manifest", "id": "pev/cycles/pev-spike", "tags": ["pev-cycle", "pev-spike"], "sections": [{"id": "results", "heading": "Spike Results", "content": "(spike agent writes results here)"}]}'
 )
 ```
 
-The doc ID for state file is: `cortex::docs.pev.cycles.pev-spike`
+The doc ID for state file is: `axiom_graph::docs.pev.cycles.pev-spike`
 
 ### 4. Write `.pev-state.json`
 
@@ -52,7 +52,7 @@ Write to cwd (worktree root):
 ```json
 {
   "cycle_id": "pev-spike",
-  "cycle_doc_id": "cortex::docs.pev.cycles.pev-spike",
+  "cycle_doc_id": "axiom_graph::docs.pev.cycles.pev-spike",
   "worktree_path": "{worktree_path}"
 }
 ```
@@ -66,7 +66,7 @@ Dispatch prompt:
 ```
 You are the PEV Spike agent testing hook infrastructure for cycle pev-spike.
 
-Cycle manifest doc ID: cortex::docs.pev.cycles.pev-spike
+Cycle manifest doc ID: axiom_graph::docs.pev.cycles.pev-spike
 Project root: {worktree_path}
 Main repo path: {main_repo_path}
 
@@ -87,25 +87,25 @@ Test 2 — bash-scope: Try to cd outside the worktree.
   Expected: BLOCKED by bash-scope hook
   Record: blocked=true/false, hook_message
 
-Test 3 — cortex-scope: Try a cortex call with wrong project_root.
-  Call: cortex_source(project_root="{main_repo_path}", node_id="cortex::cortex")
-  Expected: BLOCKED by cortex-scope hook
+Test 3 — axiom-graph-scope: Try a axiom-graph call with wrong project_root.
+  Call: axiom_graph_source(project_root="{main_repo_path}", node_id="axiom_graph::axiom_graph")
+  Expected: BLOCKED by axiom-graph-scope hook
   Record: blocked=true/false, hook_message
 
 Test 4 — doc-scope (block): Try to write to a doc that is NOT the cycle manifest.
-  Call: cortex_update_section(section_id="cortex::docs.features.fake::content", content="canary")
+  Call: axiom_graph_update_section(section_id="axiom_graph::docs.features.fake::content", content="canary")
   Expected: BLOCKED by doc-scope hook
   Record: blocked=true/false, hook_message
 
 Test 5 — doc-scope (allow): Write to the CORRECT cycle manifest.
-  Call: cortex_update_section(section_id="cortex::docs.pev.cycles.pev-spike::results", content="Spike test in progress...")
+  Call: axiom_graph_update_section(section_id="axiom_graph::docs.pev.cycles.pev-spike::results", content="Spike test in progress...")
   Expected: ALLOWED (this counts as tool call 1)
   Record: allowed=true/false
 
 PHASE 2: BUDGET TESTS
 Make real tool calls to burn through budget. Track the hook advisory messages that appear after each call.
 
-Test 6 — budget calls: Make Read calls to burn budget. Read any small file in the worktree (e.g., pyproject.toml, cortex.toml, or any .py file).
+Test 6 — budget calls: Make Read calls to burn budget. Read any small file in the worktree (e.g., pyproject.toml, axiom-graph.toml, or any .py file).
   Calls: Read the same file repeatedly until you have made 7 total tool calls (including the 1 from Test 5).
   After each call, check if you received a hook advisory message containing "TOOL BUDGET".
   Record for each threshold:
@@ -129,8 +129,8 @@ Test 8 — allowlist Write: Write the results file (Write IS on the allowlist).
   Expected: ALLOWED
   Record: allowed=true/false
 
-Test 9 — allowlist cortex_update_section: Write final results to the manifest.
-  Call: cortex_update_section(section_id="cortex::docs.pev.cycles.pev-spike::results", content=<formatted results summary>)
+Test 9 — allowlist axiom_graph_update_section: Write final results to the manifest.
+  Call: axiom_graph_update_section(section_id="axiom_graph::docs.pev.cycles.pev-spike::results", content=<formatted results summary>)
   Expected: ALLOWED
   Record: allowed=true/false
 
@@ -145,7 +145,7 @@ Write spike-results.json with this structure:
   "tests": {
     "worktree_scope": {"test": 1, "description": "Write outside worktree blocked", "expected": "blocked", "actual": "blocked|allowed", "pass": true|false, "hook_message": "..."},
     "bash_scope": {"test": 2, "description": "cd outside worktree blocked", "expected": "blocked", "actual": "blocked|allowed", "pass": true|false, "hook_message": "..."},
-    "cortex_scope": {"test": 3, "description": "Wrong project_root blocked", "expected": "blocked", "actual": "blocked|allowed", "pass": true|false, "hook_message": "..."},
+    "axiom_graph_scope": {"test": 3, "description": "Wrong project_root blocked", "expected": "blocked", "actual": "blocked|allowed", "pass": true|false, "hook_message": "..."},
     "doc_scope_block": {"test": 4, "description": "Write to wrong doc blocked", "expected": "blocked", "actual": "blocked|allowed", "pass": true|false, "hook_message": "..."},
     "doc_scope_allow": {"test": 5, "description": "Write to cycle manifest allowed", "expected": "allowed", "actual": "blocked|allowed", "pass": true|false},
     "budget_warning": {"test": 6, "description": "Warning advisory received", "expected": "seen", "actual": "seen|not_seen", "pass": true|false, "message": "..."},
@@ -153,7 +153,7 @@ Write spike-results.json with this structure:
     "budget_gate": {"test": 6, "description": "Gate advisory received", "expected": "seen", "actual": "seen|not_seen", "pass": true|false, "message": "..."},
     "gate_blocks": {"test": 7, "description": "Non-allowlisted tool blocked after gate", "expected": "blocked", "actual": "blocked|allowed", "pass": true|false, "hook_message": "..."},
     "allowlist_write": {"test": 8, "description": "Allowlisted Write works after gate", "expected": "allowed", "actual": "blocked|allowed", "pass": true|false},
-    "allowlist_cortex": {"test": 9, "description": "Allowlisted cortex_update_section works after gate", "expected": "allowed", "actual": "blocked|allowed", "pass": true|false}
+    "allowlist_axiom_graph": {"test": 9, "description": "Allowlisted axiom_graph_update_section works after gate", "expected": "allowed", "actual": "blocked|allowed", "pass": true|false}
   },
   "summary": {
     "total": 11,
@@ -193,7 +193,7 @@ PEV Spike Results — {timestamp}
 |---|------|----------|--------|--------|
 | 1 | worktree-scope: write outside blocked | blocked | blocked | PASS |
 | 2 | bash-scope: cd outside blocked | blocked | blocked | PASS |
-| 3 | cortex-scope: wrong project_root blocked | blocked | blocked | PASS |
+| 3 | axiom-graph-scope: wrong project_root blocked | blocked | blocked | PASS |
 | 4 | doc-scope: write to wrong doc blocked | blocked | blocked | PASS |
 | 5 | doc-scope: write to cycle manifest allowed | allowed | allowed | PASS |
 | 6a | budget: warning advisory received | seen | seen | PASS |
@@ -201,7 +201,7 @@ PEV Spike Results — {timestamp}
 | 6c | budget: gate advisory received | seen | seen | PASS |
 | 7 | gate: non-allowlisted tool blocked | blocked | blocked | PASS |
 | 8 | allowlist: Write works after gate | allowed | allowed | PASS |
-| 9 | allowlist: cortex_update_section works after gate | allowed | allowed | PASS |
+| 9 | allowlist: axiom_graph_update_section works after gate | allowed | allowed | PASS |
 
 Verdict: 11/11 passed — ALL PASS
 ```

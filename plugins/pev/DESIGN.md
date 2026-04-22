@@ -8,7 +8,7 @@ PEV is a multi-agent orchestration for structured code changes. Five agent defin
 
 ```
 User request
-  → Orchestrator: worktree + cortex checkout + cycle manifest doc (pev-active)
+  → Orchestrator: worktree + axiom-graph checkout + cycle manifest doc (pev-active)
   → Architect     [doc-write: cycle manifest only]
     → explore codebase → NEEDS_INPUT questions (proxy-relay) → pitch
     → Human gate
@@ -21,7 +21,7 @@ User request
     → FAIL → Builder loopback (max 2x)
   → Merge gate (human approval) → orchestrator merges worktree → main
   → Auditor       [no code-write; unrestricted doc-write on main]
-    → cortex_build + cortex_check → review stale nodes
+    → axiom_graph_build + axiom_graph_check → review stale nodes
     → read .pev/doc-topology.json → per-category auditor-action
     → update graph-linked + topology-listed docs
     → Impact Report
@@ -36,7 +36,7 @@ User request
 
 **Cycle manifest as central artifact.** A DocJSON at `docs/pev/cycles/<cycle-id>.json` carrying the pitch, build plan, review findings, change ledger, and impact report. Agents write their phase's outputs to the manifest as they work, so partial progress survives incarnation cutoffs. The orchestrator reads manifest status sections to determine phase transitions.
 
-**`/pev-instance` shares the spine, not the machinery.** Same user-story framing, same human gate, same self-review against `.pev/` SOPs. But single agent, no worktree, no separate Reviewer — the trade for small tasks. Writes to `docs/pev/instances/<id>.json` under the same namespace so `cortex_search` finds both cycle and instance history.
+**`/pev-instance` shares the spine, not the machinery.** Same user-story framing, same human gate, same self-review against `.pev/` SOPs. But single agent, no worktree, no separate Reviewer — the trade for small tasks. Writes to `docs/pev/instances/<id>.json` under the same namespace so `axiom_graph_search` finds both cycle and instance history.
 
 ## Tool permissions matrix
 
@@ -46,13 +46,13 @@ Each agent's `tools:` frontmatter is a runtime-enforced allowlist. Agents cannot
 
 | Capability | Architect | Builder | Reviewer | Auditor | Doc Reviewer | pev-instance¹ |
 |---|---|---|---|---|---|---|
-| Read code (`cortex_source`, `Read`, `Grep`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Search/graph (`cortex_search`, `cortex_graph`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Read code (`axiom_graph_source`, `Read`, `Grep`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Search/graph (`axiom_graph_search`, `axiom_graph_graph`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Write code (`Edit`, `Write`, `Bash`) | ✗ | ✓ | ✗² | ✗ | ✗ | ✓ |
-| Write cycle manifest (`cortex_update_section`) | ✓ | ✓ | ✓ | (not used) | ✓ | ✓ |
+| Write cycle manifest (`axiom_graph_update_section`) | ✓ | ✓ | ✓ | (not used) | ✓ | ✓ |
 | Write live feature docs | ✗ | ✗ | ✗ | **✓** | ✗ | ✗ |
-| `cortex_build` / `cortex_check` | ✓ | ✓ | ✓ (check only) | ✓ | ✗ | ✓ |
-| `cortex_mark_clean`, `cortex_purge_node` | ✗ | ✗ | ✗ | **✓** | ✗ | ✗ |
+| `axiom_graph_build` / `axiom_graph_check` | ✓ | ✓ | ✓ (check only) | ✓ | ✗ | ✓ |
+| `axiom_graph_mark_clean`, `axiom_graph_purge_node` | ✗ | ✗ | ✗ | **✓** | ✗ | ✗ |
 | Commit in git | ✗ | ✓³ | ✗ | ✗ | ✗ | ✓ |
 | User interaction | Proxy⁴ | ✗ | Proxy⁴ | Proxy⁴ | Proxy⁴ | Direct |
 | Dispatch subagents | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
@@ -96,11 +96,11 @@ Tool-budget counters are per-subagent-invocation. The `agent_id` field in stdin 
 |---|---|---|
 | `pev-worktree-scope.sh` | PreToolUse (Write/Edit) | Blocks writes outside the worktree |
 | `pev-bash-scope.sh` | PreToolUse (Bash) | Blocks `cd` out of the worktree |
-| `pev-doc-scope.sh` | PreToolUse (cortex doc-write tools) | Restricts doc writes to the cycle manifest |
-| `pev-cortex-scope.sh` | PreToolUse (mcp__cortex__.*) | Enforces cortex `project_root` matches worktree |
+| `pev-doc-scope.sh` | PreToolUse (axiom-graph doc-write tools) | Restricts doc writes to the cycle manifest |
+| `pev-axiom-graph-scope.sh` | PreToolUse (mcp__axiom_graph__.*) | Enforces axiom-graph `project_root` matches worktree |
 | `pev-tool-gate.sh` | PreToolUse (.*) | Post-budget allowlist gate |
 | `pev-tool-counter.sh` | PostToolUse (.*) | Increments counter; emits budget advisories |
-| `pev-subagent-stop.sh` | SubagentStop | Counter cleanup + Builder cortex rebuild |
+| `pev-subagent-stop.sh` | SubagentStop | Counter cleanup + Builder axiom-graph rebuild |
 
 ## Cycle manifest structure
 
@@ -131,9 +131,9 @@ Each phase-agent (Architect, Builder, Reviewer, Auditor, Doc Reviewer) and the o
 
 This is distinct from the `decisions` log (cycle-wide record of what was chosen and why) and from `builder.deviations` (structured Builder-vs-plan delta). Friction is phenomenological: what was hard or felt off, regardless of whether the agent deviated.
 
-Entries follow a short-tag + raw-context-paste format documented in each skill and in the cycle-manifest template's `friction-logs` section. Initiative-based, not gated — agents capture in-the-moment or not at all. Empty sections are expected and acceptable; the value compounds across cycles as `cortex_search` surfaces recurring tags (e.g., `cortex-staleness`, `instruction-ambiguity`, `role-pinch`) that drive skill and tool evolution.
+Entries follow a short-tag + raw-context-paste format documented in each skill and in the cycle-manifest template's `friction-logs` section. Initiative-based, not gated — agents capture in-the-moment or not at all. Empty sections are expected and acceptable; the value compounds across cycles as `axiom_graph_search` surfaces recurring tags (e.g., `axiom-graph-staleness`, `instruction-ambiguity`, `role-pinch`) that drive skill and tool evolution.
 
-Sections are created lazily on first write via `cortex_update_section` — same pattern as `reviewer.progress`, `builder.build-plan`, and `auditor.change-ledger`.
+Sections are created lazily on first write via `axiom_graph_update_section` — same pattern as `reviewer.progress`, `builder.build-plan`, and `auditor.change-ledger`.
 
 ## Agent responsibilities (one-line each)
 
@@ -142,7 +142,7 @@ Sections are created lazily on first write via `cortex_update_section` — same 
 - **Reviewer** — six-pass review of Builder's code against Architect pitch (tests, source docs, spec compliance, functionality preservation, code quality, PEV-specific). Read-only code access. Writes review results to cycle manifest.
 - **Auditor** — runs on main post-merge. Reviews every stale node; updates graph-linked docs; reads `.pev/doc-topology.json` and performs `auditor-action` per triggered category. Writes Impact Report. Doc-write on live feature docs but no code-write.
 - **Doc Reviewer** — verifies Auditor's doc updates against Builder's work; scans for drift in doc categories the Auditor may have missed. Read-only except cycle manifest write-back.
-- **pev-spike** — special test agent. 11-test integration smoke test of PEV hook infrastructure (worktree scope, bash scope, doc scope, cortex scope, budget warnings, gate, allowlist). Used only for validating PEV itself.
+- **pev-spike** — special test agent. 11-test integration smoke test of PEV hook infrastructure (worktree scope, bash scope, doc scope, axiom-graph scope, budget warnings, gate, allowlist). Used only for validating PEV itself.
 
 ## `.pev/` SOPs — extension points
 
@@ -161,7 +161,7 @@ Each has a plugin-shipped fallback at `${CLAUDE_PLUGIN_ROOT}/templates/<name>.js
 If you extend PEV with a new concern that varies per project:
 
 1. Create `plugins/pev/templates/<new-sop>.json` as the plugin's default. DocJSON format with clearly-named sections. Include an `overview` section documenting which skills read this file and what fields matter.
-2. Update the relevant skill to read `{worktree_path}/.pev/<new-sop>.json` first, fall back to `${CLAUDE_PLUGIN_ROOT}/templates/<new-sop>.json`. Use `Read` tool + JSON parse; don't require cortex indexing.
+2. Update the relevant skill to read `{worktree_path}/.pev/<new-sop>.json` first, fall back to `${CLAUDE_PLUGIN_ROOT}/templates/<new-sop>.json`. Use `Read` tool + JSON parse; don't require axiom-graph indexing.
 3. Document the new SOP in this file's table above and in [USER_GUIDE.md](./USER_GUIDE.md#customizing-via-pev-sops).
 
 ### Adding a category to `doc-topology.json`
@@ -172,7 +172,7 @@ Add a section with ID `category.<name>` containing four fields in markdown conte
 
 Signals that several agents consult to stay consistent:
 
-- **`cortex_workflow_list(steps=true)`** — returns functions with `@workflow` + `Step()` markers. Framed as **developer-declared core mechanisms**. Used by:
+- **`axiom_graph_workflow_list(steps=true)`** — returns functions with `@workflow` + `Step()` markers. Framed as **developer-declared core mechanisms**. Used by:
   - Reviewer Pass 3 (functionality preservation — scrutinize callers harder for workflow-marked functions)
   - Reviewer Pass 4 (code quality — findings in workflow-marked code rank `important`/`critical`, not `minor`)
   - Reviewer Pass 5c (workflow markers match code behavior)
@@ -183,15 +183,15 @@ Signals that several agents consult to stay consistent:
 
 - **Cycle manifest `architect.test-plan`** — the source of truth for what tests the Builder owes. Reviewer checks Builder's tests against this row by row.
 
-## Why cortex-integrated
+## Why axiom-graph-integrated
 
-PEV depends on cortex for:
-- Code reads during planning and review (`cortex_source`, `cortex_graph`, `cortex_search`)
+PEV depends on axiom-graph for:
+- Code reads during planning and review (`axiom_graph_source`, `axiom_graph_graph`, `axiom_graph_search`)
 - Doc graph for the Auditor's graph-linked doc updates
 - Cycle manifest persistence + searchability via DocJSON
-- Workflow marker introspection via `cortex_workflow_list`
+- Workflow marker introspection via `axiom_graph_workflow_list`
 
-PEV could, in principle, be cortex-independent (`.pev/` SOPs as an abstraction layer + `Read`/`Grep` fallbacks for code reads). This is deliberately out of scope — the value of the integration in practice outweighs the portability.
+PEV could, in principle, be axiom-graph-independent (`.pev/` SOPs as an abstraction layer + `Read`/`Grep` fallbacks for code reads). This is deliberately out of scope — the value of the integration in practice outweighs the portability.
 
 ## Platform observations worth preserving
 
@@ -200,7 +200,7 @@ These are cross-platform and cross-Claude-Code-version issues that shaped the pl
 - **Windows `cwd` in hook JSON uses backslashes** — hooks must `cygpath -u` before building state-file paths. Without this, `[ -f ]` tests fall open.
 - **Native Windows jq cannot open POSIX paths** — `jq -r '...' "$STATE_FILE"` returns empty when `$STATE_FILE` starts with `/c/`. Hook scripts use `cat "$STATE_FILE" | jq -r '...'` to work around.
 - **`grep -oP` requires a UTF-8 locale** which the hook execution env doesn't reliably set. All PCRE uses replaced with POSIX `sed`.
-- **Hook matchers are full-string regex.** `"mcp__cortex__"` does not match `mcp__cortex__cortex_source`; use `"mcp__cortex__.*"`.
+- **Hook matchers are full-string regex.** `"mcp__axiom_graph__"` does not match `mcp__axiom_graph__axiom_graph_source`; use `"mcp__axiom_graph__.*"`.
 - **Agent-frontmatter hooks silently no-op** in marketplace plugin installs. All PEV hooks live in `plugins/pev/hooks/hooks.json`, none in agent frontmatter.
 - **Slash commands through `claude -p` on git-bash need `MSYS_NO_PATHCONV=1`** or the slash becomes a mangled filesystem path.
 

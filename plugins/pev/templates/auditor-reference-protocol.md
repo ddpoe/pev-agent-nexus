@@ -8,7 +8,7 @@ The Auditor IS the post-implementation protocol — there is no separate step. F
 
 Two modes:
 - **PEV cycle** — the Auditor reads the `change-set` section from the cycle manifest to categorize findings as `expected` (in the change-set) or `collateral` (from external merges or indirect effects).
-- **Manual audit** — run independently via `cortex check`. No cycle manifest; all findings are treated equally.
+- **Manual audit** — run independently via `axiom-graph check`. No cycle manifest; all findings are treated equally.
 
 ## Feature Doc Hierarchy
 
@@ -63,15 +63,15 @@ docs/features/{feature}/
 To find which feature docs to update, map the Builder's changed files to feature areas. Use the directory structure under `docs/features/` — each top-level directory corresponds to a feature area. Then search for existing docs:
 
 ```
-cortex_list(location="docs/features/")
-cortex_search(query="features {feature-area}", node_type="doc")
+axiom_graph_list(location="docs/features/")
+axiom_graph_search(query="features {feature-area}", node_type="doc")
 ```
 
 Walk the feature directory to find PRDs, design specs, and interface specs for the affected area. If a sub-feature directory exists under the feature, check its PRD's capabilities table.
 
 ## Post-Implementation Updates
 
-After `cortex_build` on merged main, perform these updates before the audit checks. Use `cortex_update_section` to patch sections directly.
+After `axiom_graph_build` on merged main, perform these updates before the audit checks. Use `axiom_graph_update_section` to patch sections directly.
 
 ### 1. Sub-feature PRD capabilities table
 **Section:** `current-capabilities` in the relevant sub-feature PRD.
@@ -80,7 +80,7 @@ After `cortex_build` on merged main, perform these updates before the audit chec
 - If the capability is new (not in the table), add a new row
 - If the capability was partially implemented, update to "In progress" with a note
 
-**Tool:** `cortex_update_section(section_id=..., content=<updated table>)`
+**Tool:** `axiom_graph_update_section(section_id=..., content=<updated table>)`
 
 **Also check the backlog section** — if a backlog item was implemented by the Builder, remove it from the backlog and ensure it appears in `current-capabilities` as Done.
 
@@ -97,7 +97,7 @@ After `cortex_build` on merged main, perform these updates before the audit chec
 **Action:** Update architecture, sequence diagrams, data model, or decision log if the implementation changed the system structure. Add a decision log entry if the Builder made a significant trade-off.
 
 ### 4. Doc-to-code links
-**Tool:** `cortex_add_link(section_id=..., node_id=...)`
+**Tool:** `axiom_graph_add_link(section_id=..., node_id=...)`
 **Decision test:** If a developer rewrites the linked function, would this section need review? If yes, link it.
 **What to link:** Public entry points named in the prose, functions whose contract is explicitly documented.
 **What NOT to link:** Private helpers (unless the section documents their internals), modules mentioned for orientation, test functions.
@@ -117,7 +117,7 @@ If the Builder's work created a new subsystem, feature area, or significant capa
 | New feature needs PRD | `docs/templates/feature_template/product_review_document_template.json` |
 | New feature needs design spec | `docs/templates/feature_template/design_spec_template.json` |
 
-**How to create:** Read the template, populate sections from the Architect's pitch (problem statement, user stories) and the Builder's manifest (what was built → capabilities table). Write with `cortex_write_doc` to the appropriate path in the feature hierarchy. Record in the change ledger with category `new_doc`.
+**How to create:** Read the template, populate sections from the Architect's pitch (problem statement, user stories) and the Builder's manifest (what was built → capabilities table). Write with `axiom_graph_write_doc` to the appropriate path in the feature hierarchy. Record in the change ledger with category `new_doc`.
 
 **Placement:** If the changed code lives under a module that already has a feature doc, the new doc is a sub-feature under that feature. If the code is an entirely new top-level module, create a new feature directory. Use NEEDS_INPUT only for genuine ambiguity.
 
@@ -130,23 +130,23 @@ If the Builder's work created a new subsystem, feature area, or significant capa
 
 ## Staleness & Clean Review
 
-**Only the Auditor marks nodes clean.** `cortex_mark_clean` is exclusively an Auditor tool. Every `mark_clean` call is a deliberate judgment — the Auditor read the diff, checked the code, and decided the change is correct.
+**Only the Auditor marks nodes clean.** `axiom_graph_mark_clean` is exclusively an Auditor tool. Every `mark_clean` call is a deliberate judgment — the Auditor read the diff, checked the code, and decided the change is correct.
 
 **Scope determination:** The Auditor determines review scope empirically:
 
-1. **`cortex_check`** — the primary signal. Every stale node after `cortex_build` is in scope for review.
+1. **`axiom_graph_check`** — the primary signal. Every stale node after `axiom_graph_build` is in scope for review.
 2. **Builder's `change-set`** — what the Builder actually changed. Used to categorize findings as `expected` (in change-set) or `collateral` (not in change-set, from external merges or indirect effects).
 3. **Architect's coarse scope boundary** — which modules/subsystems were in scope. Sanity check only — flag if the Builder touched something wildly outside scope.
 
 The Auditor does NOT use the Architect's pitch to enumerate individual nodes for review. The staleness engine answers "what changed and needs review" mechanically.
 
-After `cortex_build` + `cortex_check`, review every stale node:
+After `axiom_graph_build` + `axiom_graph_check`, review every stale node:
 
 - **AGREE** (node is fine) → `mark_clean` with reason → remove tag. Scope: `expected` if in change-set, `collateral` if not.
-- **DOC NEEDS UPDATE** → `cortex_update_section` → `mark_clean` → remove tag
+- **DOC NEEDS UPDATE** → `axiom_graph_update_section` → `mark_clean` → remove tag
 - **CODE NEEDS FIX** → add to `needs_fix` in Impact Report for user review, do NOT mark clean
 
-Also re-check any `AGENT_VERIFIED` events via `cortex_report` — verify the agent's judgment was correct.
+Also re-check any `AGENT_VERIFIED` events via `axiom_graph_report` — verify the agent's judgment was correct.
 
 **Key principle:** Stale ≠ broken. Most stale nodes after a Builder run are fine — changed intentionally. Read the diff, make a judgment, mark clean. Only flag things that are actually wrong.
 
@@ -155,9 +155,9 @@ Also re-check any `AGENT_VERIFIED` events via `cortex_report` — verify the age
 Run these in order after the staleness review. Each check produces findings to triage.
 
 ### 1. Unlinked public nodes
-**Tool:** `cortex_list_undocumented`
+**Tool:** `axiom_graph_list_undocumented`
 **Filter out:** `_`-prefixed (unless core internal with own doc section), `test_`-prefixed, fixtures/helpers in test files, external package nodes, entity nodes.
-**Resolution:** For each unlinked public node, find or create the doc section that describes its contract, then `cortex_add_link`.
+**Resolution:** For each unlinked public node, find or create the doc section that describes its contract, then `axiom_graph_add_link`.
 
 ### 2. Section length
 **Threshold:** Flag sections over ~1500 characters.
@@ -165,12 +165,12 @@ Run these in order after the staleness review. Each check produces findings to t
 **Resolution:** Split into focused subsections, each covering one concept or one function's contract.
 
 ### 3. Orphan links
-**Tool:** `cortex_graph(section_id, direction="out")` for each doc section with links.
+**Tool:** `axiom_graph_graph(section_id, direction="out")` for each doc section with links.
 **Flags:** Links pointing to node IDs that no longer exist (graph rot from renames/deletions).
 **Resolution:** Remove dead link. If function renamed, relink to new ID. If deleted, remove link and update prose.
 
 ### 4. Composite coverage
-**Tool:** `cortex_list(parent_id=module_id)` to get children, check which have `documents` edges.
+**Tool:** `axiom_graph_list(parent_id=module_id)` to get children, check which have `documents` edges.
 **Threshold:** Flag modules where <50% of public children have `documents` edges.
 **Resolution:** Prioritize linking the most important public functions.
 
@@ -209,16 +209,16 @@ The key question: **is the doc section describing what the system does, or how a
 Process findings in this order (highest impact first):
 
 1. **CODE NEEDS FIX** items → add to `needs_fix` in Impact Report for user review
-2. **MISSING DOCS** → create from templates via `cortex_write_doc` + record in change ledger with category `new_doc`
-3. **DOC NEEDS UPDATE** → fix via `cortex_update_section` + `mark_clean`
-4. **Unlinked public nodes** → `cortex_add_link` to existing doc sections
+2. **MISSING DOCS** → create from templates via `axiom_graph_write_doc` + record in change ledger with category `new_doc`
+3. **DOC NEEDS UPDATE** → fix via `axiom_graph_update_section` + `mark_clean`
+4. **Unlinked public nodes** → `axiom_graph_add_link` to existing doc sections
 5. **Orphan links** → remove dead links
 6. **Section length / fan-out** → refactor docs for maintainability
 
 ### After all findings resolved
-1. `cortex_build` — re-index
-2. `cortex_check` — verify clean state on resolved nodes
-3. `cortex history checkpoint --message "pev-cycle-{cycle-id}-audit-complete"` — mark the audit as a reference point
+1. `axiom_graph_build` — re-index
+2. `axiom_graph_check` — verify clean state on resolved nodes
+3. `axiom-graph history checkpoint --message "pev-cycle-{cycle-id}-audit-complete"` — mark the audit as a reference point
 
 ## Quick Reference Checklist
 
@@ -233,20 +233,20 @@ Process findings in this order (highest impact first):
 - [ ] Doc-to-code links added (per linking policy)
 
 ### Staleness Review
-- [ ] cortex_build + cortex_check — all stale nodes identified
+- [ ] axiom_graph_build + axiom_graph_check — all stale nodes identified
 - [ ] Each stale node: reviewed, marked clean or flagged
 - [ ] AGENT_VERIFIED events re-checked
 - [ ] Scope categorization: expected vs collateral for each finding
 
 ### Automated Checks
-- [ ] cortex_list_undocumented — no unlinked public nodes
+- [ ] axiom_graph_list_undocumented — no unlinked public nodes
 - [ ] Section length — no sections >1500 chars
 - [ ] Orphan links — no links to nonexistent nodes
 - [ ] Composite coverage — >50% public children linked
 - [ ] Link fan-out — no sections with >8 outbound links
 
 ### Completion
-- [ ] cortex_build + cortex_check — clean after fixes
-- [ ] cortex history checkpoint — audit reference point recorded
+- [ ] axiom_graph_build + axiom_graph_check — clean after fixes
+- [ ] axiom-graph history checkpoint — audit reference point recorded
 - [ ] Impact Report written to cycle manifest auditor section
 ```

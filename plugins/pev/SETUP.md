@@ -30,9 +30,9 @@ mkdir -p docs/pev/cycles docs/pev/instances
 
 Commit `.gitkeep` files if you want empty dirs tracked.
 
-**Flat-dotted projects** — cortex serializes docs as `docs/<dotted-id>.json`. Cycle manifests land at `docs/pev.cycles.<cycle-id>.json` and instance checkins at `docs/pev.instances.<id>.json`. No directories to create; PEV writes the files directly under `docs/`.
+**Flat-dotted projects** — axiom-graph serializes docs as `docs/<dotted-id>.json`. Cycle manifests land at `docs/pev.cycles.<cycle-id>.json` and instance checkins at `docs/pev.instances.<id>.json`. No directories to create; PEV writes the files directly under `docs/`.
 
-**Not sure which you are?** Look at existing cortex docs:
+**Not sure which you are?** Look at existing axiom-graph docs:
 - `docs/features/<feature>/prd.json` → nested
 - `docs/features.<feature>.prd.json` → flat-dotted
 
@@ -59,22 +59,22 @@ Edit each file to match your project's conventions. The templates are self-docum
 
 See [USER_GUIDE.md §Customizing via `.pev/` SOPs](./USER_GUIDE.md#customizing-via-pev-sops) for what to change and why.
 
-### 1d. (Optional) Let cortex index your SOPs
+### 1d. (Optional) Let axiom-graph index your SOPs
 
-`cortex.toml` has a `doc_dirs` key under `[cortex.scan]` that defaults to `["docs"]`. To make your `.pev/` SOPs searchable via `cortex_search` and trackable via `cortex_history`, add `.pev` to the list:
+`axiom-graph.toml` has a `doc_dirs` key under `[axiom_graph.scan]` that defaults to `["docs"]`. To make your `.pev/` SOPs searchable via `axiom_graph_search` and trackable via `axiom_graph_history`, add `.pev` to the list:
 
 ```toml
-[cortex.scan]
+[axiom_graph.scan]
 doc_dirs = ["docs", ".pev"]
 ```
 
 Then re-index:
 
 ```bash
-cortex build .
+axiom-graph build .
 ```
 
-**Not required** — PEV skills read `.pev/*.json` directly via the Read tool regardless of indexing. Opt in when you want cortex-native queries over your SOP history (who changed what, when, and why).
+**Not required** — PEV skills read `.pev/*.json` directly via the Read tool regardless of indexing. Opt in when you want axiom-graph-native queries over your SOP history (who changed what, when, and why).
 
 ### 1e. Verify
 
@@ -98,7 +98,7 @@ Confirms `/pev-instance` dispatches, reads SOPs, writes a checkin, and commits. 
 ```
 /pev-spike
 ```
-Runs the 11-test PEV hook-infrastructure matrix — worktree scope, bash scope, cortex scope, doc scope, budget warn/urgent/gate, non-allowlisted block, allowlist pass-through. Expect **11/11 pass**. Run this after a fresh install, a major PEV version bump, or when `/hs-heartbeat` passes but you still suspect PEV-specific hook logic is off.
+Runs the 11-test PEV hook-infrastructure matrix — worktree scope, bash scope, axiom-graph scope, doc scope, budget warn/urgent/gate, non-allowlisted block, allowlist pass-through. Expect **11/11 pass**. Run this after a fresh install, a major PEV version bump, or when `/hs-heartbeat` passes but you still suspect PEV-specific hook logic is off.
 
 ## 2. Migration (upgrading between PEV versions)
 
@@ -106,7 +106,7 @@ Run only the migrations that apply to the version you're upgrading *from*. Migra
 
 ### Pre-2.0.0 → any 2.x
 
-Cycle docs moved from `docs/pev-cycles.*` to `docs/pev.cycles.*` (cortex doc IDs `docs.pev-cycles.*` → `docs.pev.cycles.*`). The filesystem command depends on your project convention.
+Cycle docs moved from `docs/pev-cycles.*` to `docs/pev.cycles.*` (axiom-graph doc IDs `docs.pev-cycles.*` → `docs.pev.cycles.*`). The filesystem command depends on your project convention.
 
 **Nested-dir projects:**
 
@@ -114,7 +114,7 @@ Cycle docs moved from `docs/pev-cycles.*` to `docs/pev.cycles.*` (cortex doc IDs
 mkdir -p docs/pev
 git mv docs/pev-cycles docs/pev/cycles
 mkdir -p docs/pev/instances
-cortex build .
+axiom-graph build .
 git add -A && git commit -m "chore: migrate docs/pev-cycles -> docs/pev/cycles (PEV v2.0.0)"
 ```
 
@@ -124,7 +124,7 @@ git add -A && git commit -m "chore: migrate docs/pev-cycles -> docs/pev/cycles (
 for f in docs/pev-cycles.*.json; do
   git mv "$f" "${f/pev-cycles./pev.cycles.}"
 done
-cortex build .
+axiom-graph build .
 git add -A && git commit -m "chore: migrate docs/pev-cycles.* -> docs/pev.cycles.* (PEV v2.0.0)"
 ```
 

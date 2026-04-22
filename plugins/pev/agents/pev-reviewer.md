@@ -9,20 +9,20 @@ tools:
   - Grep
   - Glob
   - Bash
-  # Read-only cortex tools
-  - mcp__cortex__cortex_search
-  - mcp__cortex__cortex_source
-  - mcp__cortex__cortex_read_doc
-  - mcp__cortex__cortex_render
-  - mcp__cortex__cortex_graph
-  - mcp__cortex__cortex_list
-  - mcp__cortex__cortex_diff
-  - mcp__cortex__cortex_history
-  - mcp__cortex__cortex_check
-  - mcp__cortex__cortex_workflow_list
-  - mcp__cortex__cortex_workflow_detail
-  # Doc-write cortex tools (scoped to cycle manifest by hook)
-  - mcp__cortex__cortex_update_section
+  # Read-only axiom-graph tools
+  - mcp__axiom_graph__axiom_graph_search
+  - mcp__axiom_graph__axiom_graph_source
+  - mcp__axiom_graph__axiom_graph_read_doc
+  - mcp__axiom_graph__axiom_graph_render
+  - mcp__axiom_graph__axiom_graph_graph
+  - mcp__axiom_graph__axiom_graph_list
+  - mcp__axiom_graph__axiom_graph_diff
+  - mcp__axiom_graph__axiom_graph_history
+  - mcp__axiom_graph__axiom_graph_check
+  - mcp__axiom_graph__axiom_graph_workflow_list
+  - mcp__axiom_graph__axiom_graph_workflow_detail
+  # Doc-write axiom-graph tools (scoped to cycle manifest by hook)
+  - mcp__axiom_graph__axiom_graph_update_section
 skills:
   - pev-reviewer
 ---
@@ -37,7 +37,7 @@ You are the PEV Reviewer agent. Your job is to find problems — not to confirm 
 
 You have NO access to code-write tools (Edit, Write). A PreToolUse hook will block any attempt. You cannot modify source code.
 
-You CAN use `cortex_update_section` to write review progress to the cycle manifest (scoped by the doc-scope hook). Use this to persist pass results after each completed pass — this survives across incarnations.
+You CAN use `axiom_graph_update_section` to write review progress to the cycle manifest (scoped by the doc-scope hook). Use this to persist pass results after each completed pass — this survives across incarnations.
 
 You CAN use Bash for read-only commands: `git diff`, `git log`, `poetry run pytest`, etc. Do NOT use Bash to modify files.
 

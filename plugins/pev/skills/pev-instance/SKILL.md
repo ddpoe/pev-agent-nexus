@@ -36,7 +36,7 @@ These are your reference for tier assignments (test-policy), code-quality emphas
 
 Before planning, check whether the task is actually small.
 
-**Run `cortex_workflow_list(project_root="${CLAUDE_PROJECT_DIR}", steps=true)`** — these are the developer-declared core mechanisms in the project. If your task is likely to modify any of these functions, strongly consider escalating to `/pev-cycle`; the Reviewer adds real value for core-mechanism work.
+**Run `axiom_graph_workflow_list(project_root="${CLAUDE_PROJECT_DIR}", steps=true)`** — these are the developer-declared core mechanisms in the project. If your task is likely to modify any of these functions, strongly consider escalating to `/pev-cycle`; the Reviewer adds real value for core-mechanism work.
 
 Other signals that warrant escalation (these are **examples**, use judgement):
 - Task description mentions or clearly implies 4+ files affected
@@ -101,15 +101,15 @@ Before writing the checkin, run through this checklist explicitly. This is non-o
 - [ ] **Test-policy compliance?** For each test added, verify its tier matches `.pev/test-policy.json` rules. Flag any mismatch.
 - [ ] **Review-criteria check?** If `.pev/review-criteria.json` exists, run through its project-specific checks on the changed code. Flag any violations with severity.
 - [ ] **Doc drift scan?** For each category in `.pev/doc-topology.json` whose trigger conditions match this change, list the docs in that category and note whether they need updating. Flag (don't fix) — updating feature docs is the Auditor's job in a full cycle, and `/pev-instance` doesn't run an Auditor. If you flag drift, recommend user run `/pev-cycle` next time to close the loop properly, or update docs manually.
-- [ ] **Workflow-marker check?** If the change touched a function that appears in `cortex_workflow_list(steps=true)`, verify the step markers still match the code behavior. Update them if needed (Builder responsibility, unlike full `/pev-cycle` where markers are Reviewer's to flag).
+- [ ] **Workflow-marker check?** If the change touched a function that appears in `axiom_graph_workflow_list(steps=true)`, verify the step markers still match the code behavior. Update them if needed (Builder responsibility, unlike full `/pev-cycle` where markers are Reviewer's to flag).
 - [ ] **Workflow taxonomy hygiene?** Also ask forward-looking: *did this change introduce a new function that should become a workflow?* Entry points (CLI handlers, MCP tools, API endpoints) or functions with ≥3 logical phases that would warrant a Tier 3 test are candidates. Flag any you see in the checkin — don't have to fix inline, but surface so the developer (or a future `/pev-cycle`) can fold in the annotation. This keeps the workflow taxonomy honest over many small cycles.
 - [ ] **Grepped for collateral?** Any other call sites, docs, or config files that reference the thing you changed?
 
 ### Step 7: Write the checkin doc
 
-Write a cortex doc at `{project_id}::docs.pev.instances.{instance-id}` via `cortex_write_doc`. Instance ID format: `pev-instance-YYYY-MM-DD-{slug}` — date-prefixed so `cortex_list` and filesystem browse show them chronologically.
+Write a axiom-graph doc at `{project_id}::docs.pev.instances.{instance-id}` via `axiom_graph_write_doc`. Instance ID format: `pev-instance-YYYY-MM-DD-{slug}` — date-prefixed so `axiom_graph_list` and filesystem browse show them chronologically.
 
-Read the project's `cortex.toml` for `project_id` at runtime — do not hardcode the prefix.
+Read the project's `axiom-graph.toml` for `project_id` at runtime — do not hardcode the prefix.
 
 **Template** (copy-paste the scaffold, fill in):
 
@@ -163,7 +163,7 @@ Read the project's `cortex.toml` for `project_id` at runtime — do not hardcode
 }
 ```
 
-Use `cortex_write_doc` once with the full scaffold, then (optionally) `cortex_update_section` if you need to refine specific sections. The doc lives alongside full-cycle manifests at `docs/pev/cycles/` under the same `docs.pev.*` namespace — `cortex_search` finds both.
+Use `axiom_graph_write_doc` once with the full scaffold, then (optionally) `axiom_graph_update_section` if you need to refine specific sections. The doc lives alongside full-cycle manifests at `docs/pev/cycles/` under the same `docs.pev.*` namespace — `axiom_graph_search` finds both.
 
 ### Step 8: Return
 
@@ -213,5 +213,5 @@ Entry format:
 
 ## Notes
 
-- The checkin doc namespace `docs.pev.instances.*` is parallel to `docs.pev.cycles.*`. Both are searchable via `cortex_search`. Over time, the instance history becomes a searchable "small work we did" archive — useful for spotting patterns or finding prior similar fixes before starting new work.
+- The checkin doc namespace `docs.pev.instances.*` is parallel to `docs.pev.cycles.*`. Both are searchable via `axiom_graph_search`. Over time, the instance history becomes a searchable "small work we did" archive — useful for spotting patterns or finding prior similar fixes before starting new work.
 - The full `/pev-cycle` orchestrator can (optionally) scan recent instances during its intake phase to see if a similar task was already done. Not implemented yet; natural future extension.

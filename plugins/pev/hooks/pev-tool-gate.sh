@@ -17,33 +17,33 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
 case "$AGENT_TYPE" in
   pev:pev-architect)
     LIMIT=80
-    ALLOWLIST="cortex_update_section|cortex_write_doc|cortex_add_section|cortex_build"
-    ALLOWLIST_HUMAN="cortex_update_section, cortex_write_doc, cortex_add_section, cortex_build"
+    ALLOWLIST="axiom_graph_update_section|axiom_graph_write_doc|axiom_graph_add_section|axiom_graph_build"
+    ALLOWLIST_HUMAN="axiom_graph_update_section, axiom_graph_write_doc, axiom_graph_add_section, axiom_graph_build"
     ;;
   pev:pev-builder)
     LIMIT=100
-    ALLOWLIST="Bash|Edit|Write|cortex_update_section|cortex_add_section"
-    ALLOWLIST_HUMAN="Bash, Edit, Write, cortex_update_section, cortex_add_section"
+    ALLOWLIST="Bash|Edit|Write|axiom_graph_update_section|axiom_graph_add_section"
+    ALLOWLIST_HUMAN="Bash, Edit, Write, axiom_graph_update_section, axiom_graph_add_section"
     ;;
   pev:pev-reviewer)
     LIMIT=85
-    ALLOWLIST="cortex_update_section"
-    ALLOWLIST_HUMAN="cortex_update_section"
+    ALLOWLIST="axiom_graph_update_section"
+    ALLOWLIST_HUMAN="axiom_graph_update_section"
     ;;
   pev:pev-auditor)
     LIMIT=75
-    ALLOWLIST="cortex_update_section|cortex_write_doc|cortex_add_section|cortex_delete_link|cortex_update_doc_meta|cortex_mark_clean|cortex_purge_node|cortex_build|cortex_check"
-    ALLOWLIST_HUMAN="cortex_update_section, cortex_write_doc, cortex_add_section, cortex_delete_link, cortex_update_doc_meta, cortex_mark_clean, cortex_purge_node, cortex_build, cortex_check"
+    ALLOWLIST="axiom_graph_update_section|axiom_graph_write_doc|axiom_graph_add_section|axiom_graph_delete_link|axiom_graph_update_doc_meta|axiom_graph_mark_clean|axiom_graph_purge_node|axiom_graph_build|axiom_graph_check"
+    ALLOWLIST_HUMAN="axiom_graph_update_section, axiom_graph_write_doc, axiom_graph_add_section, axiom_graph_delete_link, axiom_graph_update_doc_meta, axiom_graph_mark_clean, axiom_graph_purge_node, axiom_graph_build, axiom_graph_check"
     ;;
   pev:pev-doc-reviewer)
     LIMIT=60
-    ALLOWLIST="cortex_update_section"
-    ALLOWLIST_HUMAN="cortex_update_section"
+    ALLOWLIST="axiom_graph_update_section"
+    ALLOWLIST_HUMAN="axiom_graph_update_section"
     ;;
   pev:pev-spike)
     LIMIT=7
-    ALLOWLIST="Write|cortex_update_section"
-    ALLOWLIST_HUMAN="Write, cortex_update_section"
+    ALLOWLIST="Write|axiom_graph_update_section"
+    ALLOWLIST_HUMAN="Write, axiom_graph_update_section"
     ;;
   *) exit 0 ;;
 esac
@@ -71,4 +71,4 @@ if echo "$TOOL_NAME" | grep -qE "$ALLOWLIST"; then
 fi
 
 # Blocked
-echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"${TOOL_NAME} is blocked (budget ${COUNT}/${LIMIT}). Tools still available: ${ALLOWLIST_HUMAN}. Use cortex_update_section to save your state to the cycle manifest, then return with CONTINUING status. The next incarnation continues from your progress.\"}}"
+echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"${TOOL_NAME} is blocked (budget ${COUNT}/${LIMIT}). Tools still available: ${ALLOWLIST_HUMAN}. Use axiom_graph_update_section to save your state to the cycle manifest, then return with CONTINUING status. The next incarnation continues from your progress.\"}}"

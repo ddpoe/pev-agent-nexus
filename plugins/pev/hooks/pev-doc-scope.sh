@@ -1,5 +1,5 @@
 #!/bin/bash
-# pev-doc-scope.sh — PreToolUse hook for PEV doc-write cortex tools.
+# pev-doc-scope.sh — PreToolUse hook for PEV doc-write axiom-graph tools.
 # Enforces that doc-write calls target only the current cycle manifest.
 #
 # Active ONLY when agent_type starts with "pev:" (a PEV subagent).
@@ -42,14 +42,14 @@ fi
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // ""')
 
 case "$TOOL" in
-  mcp__cortex__cortex_update_section)
+  mcp__axiom_graph__axiom_graph_update_section)
     SECTION_ID=$(echo "$INPUT" | jq -r '.tool_input.section_id // ""')
     TARGET=$(echo "$SECTION_ID" | sed 's/::[^:]*$//')
     ;;
-  mcp__cortex__cortex_add_section)
+  mcp__axiom_graph__axiom_graph_add_section)
     TARGET=$(echo "$INPUT" | jq -r '.tool_input.doc_id // ""')
     ;;
-  mcp__cortex__cortex_write_doc)
+  mcp__axiom_graph__axiom_graph_write_doc)
     DOC_JSON=$(echo "$INPUT" | jq -r '.tool_input.doc_json // ""')
     if echo "$DOC_JSON" | jq -e . >/dev/null 2>&1; then
       TARGET=$(echo "$DOC_JSON" | jq -r '.id // ""')

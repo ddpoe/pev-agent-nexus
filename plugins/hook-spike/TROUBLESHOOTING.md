@@ -17,7 +17,7 @@ pev-agent-nexus (marketplace)
 Layer cake:
 
 - **Layer 1 — hook infrastructure**: can a plugin's `hooks.json` fire at all? Does `${CLAUDE_PLUGIN_ROOT}` expand? Does `agent_type` reach the hook? → `hook-spike`.
-- **Layer 2 — PEV-specific behavior**: do the worktree/bash/doc/cortex scope hooks enforce correctly? Does the tool-budget counter + allowlist gate work per-agent? → `pev-spike`.
+- **Layer 2 — PEV-specific behavior**: do the worktree/bash/doc/axiom-graph scope hooks enforce correctly? Does the tool-budget counter + allowlist gate work per-agent? → `pev-spike`.
 
 **Always debug bottom-up.** If `/hs-heartbeat` fails, `/pev-spike` cannot meaningfully pass. Don't chase PEV hook bugs until Layer 1 is green.
 
@@ -62,15 +62,15 @@ Integration test for the real PEV hook behavior. Exercises the scope hooks, budg
 |---|---|---|
 | 1 | worktree-scope: Write outside worktree blocked | `pev-worktree-scope.sh` + cwd resolution |
 | 2 | bash-scope: `cd /tmp` blocked | `pev-bash-scope.sh` + `cd`-target extraction |
-| 3 | cortex-scope: wrong `project_root` blocked | `pev-cortex-scope.sh` + path comparison |
+| 3 | axiom-graph-scope: wrong `project_root` blocked | `pev-axiom-graph-scope.sh` + path comparison |
 | 4 | doc-scope: write to wrong doc blocked | `pev-doc-scope.sh` + `.pev-state.json` `cycle_doc_id` |
-| 5 | doc-scope: write to cycle manifest allowed | hook allow path (cortex layer may still 404 if manifest unindexed — not a hook failure) |
+| 5 | doc-scope: write to cycle manifest allowed | hook allow path (axiom-graph layer may still 404 if manifest unindexed — not a hook failure) |
 | 6a | budget warning advisory (3/7) | `pev-tool-counter.sh` warn threshold |
 | 6b | budget urgent advisory (5/7) | `pev-tool-counter.sh` urgent threshold |
 | 6c | budget gate advisory (7/7) | `pev-tool-counter.sh` + `pev-tool-gate.sh` at threshold |
 | 7 | gate blocks non-allowlisted tool | `pev-tool-gate.sh` block path |
 | 8 | allowlist: Write works after gate | gate allowlist pass-through |
-| 9 | allowlist: `cortex_update_section` works after gate | gate + doc-scope stacking |
+| 9 | allowlist: `axiom_graph_update_section` works after gate | gate + doc-scope stacking |
 
 ### Driver skill
 
@@ -461,11 +461,11 @@ Things we tried that didn't work, plus the evidence and the fix.
 
 ### 7.2 Bare prefix matcher doesn't fire
 
-**Symptom:** A hook registered with `"matcher": "mcp__cortex__"` does not fire for `mcp__cortex__cortex_source`. No error, no log entry.
+**Symptom:** A hook registered with `"matcher": "mcp__axiom_graph__"` does not fire for `mcp__axiom_graph__axiom_graph_source`. No error, no log entry.
 
 **Evidence:** Absence of log entries in `/tmp/pev-hook-debug.log` for that matcher, despite the subagent clearly calling the tool.
 
-**Fix:** Claude Code matchers appear to require full-string match. Use `"mcp__cortex__.*"` or an explicit alternation like `"mcp__cortex__cortex_source|mcp__cortex__cortex_graph"`.
+**Fix:** Claude Code matchers appear to require full-string match. Use `"mcp__axiom_graph__.*"` or an explicit alternation like `"mcp__axiom_graph__axiom_graph_source|mcp__axiom_graph__axiom_graph_graph"`.
 
 ### 7.3 `${CLAUDE_PLUGIN_ROOT}` in agent frontmatter is unclear
 
@@ -488,7 +488,7 @@ exit 2
 
 ### 7.5 `.pev-state.json` as dispatch source races with orchestrator
 
-**Symptom:** Every time the orchestrator makes a Bash or cortex call, hooks fire but the state file's "current agent" is stale or ambiguous. Pre-v1.8.0 the orchestrator had to "update counter_file for X phase" before every dispatch, which was fragile and would fail if the orchestrator itself called a tool mid-dispatch.
+**Symptom:** Every time the orchestrator makes a Bash or axiom-graph call, hooks fire but the state file's "current agent" is stale or ambiguous. Pre-v1.8.0 the orchestrator had to "update counter_file for X phase" before every dispatch, which was fragile and would fail if the orchestrator itself called a tool mid-dispatch.
 
 **Fix:** Use `agent_type` from hook input JSON directly. It's populated only when a subagent is executing the tool call, absent when the orchestrator is. Per-agent config branches inside the hook script. Counter files use `agent_id` (unique per invocation).
 
@@ -572,7 +572,7 @@ cat /tmp/hook-spike/input-PreToolUse-<ToolName>.json | jq
 
 | Hook script | Insert location |
 |---|---|
-| `pev-worktree-scope.sh`, `pev-bash-scope.sh`, `pev-doc-scope.sh`, `pev-cortex-scope.sh` | Right after `INPUT=$(cat)` and before the `# Gate: PEV subagents only` comment |
+| `pev-worktree-scope.sh`, `pev-bash-scope.sh`, `pev-doc-scope.sh`, `pev-axiom-graph-scope.sh` | Right after `INPUT=$(cat)` and before the `# Gate: PEV subagents only` comment |
 | `pev-tool-counter.sh`, `pev-tool-gate.sh` | Right after the `AGENT_TYPE=...`, `AGENT_ID=...` (and `TOOL_NAME=...` for gate) extraction block |
 | `pev-subagent-stop.sh` | Right after `AGENT_TYPE=...`, `AGENT_ID=...` extraction |
 

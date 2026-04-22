@@ -8,7 +8,7 @@ Orientation for agents and contributors working **on** this marketplace (extendi
 
 A Claude Code plugin marketplace hosting two plugins:
 
-- **`pev`** — Plan-Execute-Validate agent workflow for structured code changes. Two cycle shapes (`/pev-cycle` full, `/pev-instance` slim), cortex integration, project-customizable via `.pev/` SOPs.
+- **`pev`** — Plan-Execute-Validate agent workflow for structured code changes. Two cycle shapes (`/pev-cycle` full, `/pev-instance` slim), axiom-graph integration, project-customizable via `.pev/` SOPs.
 - **`hook-spike`** — Minimal plugin-hook test harness. Debugs plugin infrastructure (matcher mismatches, env-var expansion, stdin JSON shape, cross-platform path handling). Companion to `pev` and useful for any Claude Code plugin work.
 
 ## Layout
@@ -59,7 +59,7 @@ pev-agent-nexus/
 - **`.pev/` SOPs** — DocJSON files in consumer repos that customize PEV per project (`doc-topology.json`, `test-policy.json`, `review-criteria.json`). Plugin falls back to templates at `${CLAUDE_PLUGIN_ROOT}/templates/` when the project file is absent.
 - **Cycle manifest** — per-cycle DocJSON at `docs/pev/cycles/{id}.json` carrying the pitch, build plan, review findings, and impact report
 - **`agent_type` dispatch** — PEV hooks read `agent_type` from stdin JSON (value: `pev:pev-<role>`) to branch per-agent budget/allowlist logic in shared scripts
-- **`cortex_workflow_list(steps=true)`** — authoritative "developer-declared core mechanisms" signal used by Reviewer Pass 5c/5d and `/pev-instance` escalation
+- **`axiom_graph_workflow_list(steps=true)`** — authoritative "developer-declared core mechanisms" signal used by Reviewer Pass 5c/5d and `/pev-instance` escalation
 - **hook-spike as Layer 1** — if plugin infrastructure is broken, `hook-spike` isolates which variable (matcher, env expansion, stdin shape, exit code). Run `/hs-heartbeat` before blaming PEV-specific logic.
 
 ## Don't do this
@@ -68,7 +68,7 @@ pev-agent-nexus/
 - **Don't declare hooks in agent-frontmatter `hooks:` blocks** — they silently no-op in marketplace installs. Register in `plugins/<name>/hooks/hooks.json` only. (This was the v1.8.0 fix.)
 - **Don't use `jq -r '...' "$FILE"`** in hook scripts on Windows — native Windows jq can't open POSIX paths. Use `cat "$FILE" | jq -r '...'`. (This was the v1.8.3 fix.)
 - **Don't `grep -oP`** in hook scripts — PCRE needs UTF-8 locale which isn't always set. Use POSIX `sed`. (v1.8.5 fix.)
-- **Don't use bare matchers like `"matcher": "mcp__cortex__"`** — Claude Code matchers are full-string. Use `"mcp__cortex__.*"`. (v1.8.5 fix.)
+- **Don't use bare matchers like `"matcher": "mcp__axiom_graph__"`** — Claude Code matchers are full-string. Use `"mcp__axiom_graph__.*"`. (v1.8.5 fix.)
 - **Don't ship debug-logging echoes in committed hooks** — add them temporarily per the recipe in `TROUBLESHOOTING.md` §8.3, remove before commit.
 - **Don't create `.claude/` mirrors** of plugin content in the repo — they shadow the plugin install and silently change `agent_type` format. The plugin is the canonical source.
 

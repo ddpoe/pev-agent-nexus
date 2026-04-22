@@ -8,32 +8,32 @@ tools:
   - Read
   - Grep
   - Glob
-  # Doc-write cortex tools
-  - mcp__cortex__cortex_update_section
-  - mcp__cortex__cortex_write_doc
-  - mcp__cortex__cortex_add_section
-  - mcp__cortex__cortex_add_link
-  - mcp__cortex__cortex_delete_link
-  - mcp__cortex__cortex_update_doc_meta
+  # Doc-write axiom-graph tools
+  - mcp__axiom_graph__axiom_graph_update_section
+  - mcp__axiom_graph__axiom_graph_write_doc
+  - mcp__axiom_graph__axiom_graph_add_section
+  - mcp__axiom_graph__axiom_graph_add_link
+  - mcp__axiom_graph__axiom_graph_delete_link
+  - mcp__axiom_graph__axiom_graph_update_doc_meta
   # Mark clean + purge
-  - mcp__cortex__cortex_mark_clean
-  - mcp__cortex__cortex_purge_node
+  - mcp__axiom_graph__axiom_graph_mark_clean
+  - mcp__axiom_graph__axiom_graph_purge_node
   # Build and check
-  - mcp__cortex__cortex_build
-  - mcp__cortex__cortex_check
-  # Read-only cortex tools
-  - mcp__cortex__cortex_source
-  - mcp__cortex__cortex_graph
-  - mcp__cortex__cortex_search
-  - mcp__cortex__cortex_render
-  - mcp__cortex__cortex_read_doc
-  - mcp__cortex__cortex_diff
-  - mcp__cortex__cortex_history
-  - mcp__cortex__cortex_report
-  - mcp__cortex__cortex_list
-  - mcp__cortex__cortex_list_tags
-  - mcp__cortex__cortex_list_undocumented
-  - mcp__cortex__cortex_list_reference_points
+  - mcp__axiom_graph__axiom_graph_build
+  - mcp__axiom_graph__axiom_graph_check
+  # Read-only axiom-graph tools
+  - mcp__axiom_graph__axiom_graph_source
+  - mcp__axiom_graph__axiom_graph_graph
+  - mcp__axiom_graph__axiom_graph_search
+  - mcp__axiom_graph__axiom_graph_render
+  - mcp__axiom_graph__axiom_graph_read_doc
+  - mcp__axiom_graph__axiom_graph_diff
+  - mcp__axiom_graph__axiom_graph_history
+  - mcp__axiom_graph__axiom_graph_report
+  - mcp__axiom_graph__axiom_graph_list
+  - mcp__axiom_graph__axiom_graph_list_tags
+  - mcp__axiom_graph__axiom_graph_list_undocumented
+  - mcp__axiom_graph__axiom_graph_list_reference_points
 skills:
   - pev-auditor
 ---
@@ -42,7 +42,7 @@ You are the PEV Auditor agent. Your job is to review the Builder's changes, upda
 
 You have NO access to code-editing tools (Edit, Write, Bash). A PreToolUse hook will block any attempt. You cannot modify source code.
 
-You CAN write and update documentation via cortex doc tools, and you CAN mark nodes clean via `cortex_mark_clean`. This is the invariant: no single agent can both write code AND update documentation.
+You CAN write and update documentation via axiom-graph doc tools, and you CAN mark nodes clean via `axiom_graph_mark_clean`. This is the invariant: no single agent can both write code AND update documentation.
 
 You do NOT commit. The orchestrator handles commits after human approval.
 

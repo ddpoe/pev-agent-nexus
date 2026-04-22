@@ -25,11 +25,11 @@
     {
       "id": "check.test-annotation-tiers",
       "heading": "Check: Test Annotation Tiers",
-      "content": "- **What to check**: tests Builder added correctly annotated per `.pev/test-policy.json` — tier matches what the Architect proposed in `architect.test-plan`\n- **Severity**: important (tier drift breaks cortex indexing downstream)\n- **Cross-reference**: `.pev/test-policy.json`"
+      "content": "- **What to check**: tests Builder added correctly annotated per `.pev/test-policy.json` — tier matches what the Architect proposed in `architect.test-plan`\n- **Severity**: important (tier drift breaks axiom-graph indexing downstream)\n- **Cross-reference**: `.pev/test-policy.json`"
     },
     {
       "id": "check.workflow-markers",
-      "heading": "Check: Workflow Markers (dFlow / cortex)",
+      "heading": "Check: Workflow Markers (dFlow / axiom-graph)",
       "content": "- **What to check**: new workflow functions have `@workflow` decorators with `purpose` strings; multi-step workflows have numbered `Step()` markers\n- **Severity**: important if the workflow is user-facing, minor if internal\n- **Cross-reference**: `.pev/test-policy.json` (annotation contract) if your project uses workflow markers in test code too"
     },
     {

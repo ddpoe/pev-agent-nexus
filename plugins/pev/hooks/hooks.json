@@ -22,7 +22,7 @@
         ]
       },
       {
-        "matcher": "mcp__cortex__cortex_update_section|mcp__cortex__cortex_write_doc|mcp__cortex__cortex_add_section",
+        "matcher": "mcp__axiom_graph__axiom_graph_update_section|mcp__axiom_graph__axiom_graph_write_doc|mcp__axiom_graph__axiom_graph_add_section",
         "hooks": [
           {
             "type": "command",
@@ -32,11 +32,11 @@
         ]
       },
       {
-        "matcher": "mcp__cortex__.*",
+        "matcher": "mcp__axiom_graph__.*",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pev-cortex-scope.sh\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pev-axiom-graph-scope.sh\"",
             "timeout": 5
           }
         ]

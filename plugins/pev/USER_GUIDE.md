@@ -18,11 +18,11 @@ For non-trivial changes. Five phases, five approval gates, isolated worktree, pe
 
 Phases:
 
-1. **Intake** — orchestrator verifies a clean working tree, creates a worktree at `.claude/worktrees/<cycle-id>`, checks out a fresh branch, copies the cortex DB into the worktree (via `cortex_checkout`), creates the cycle manifest at `docs/pev/cycles/<cycle-id>.json`. Cycle IDs are `pev-YYYY-MM-DD-<slug>`.
-2. **Plan (Architect)** — Architect explores the codebase via cortex, optionally asks you clarifying questions, writes a Shape Up-style pitch to the manifest: problem, user stories ("As a [persona], I want…"), solution sketch, constraints, test plan. **Human gate**: review the pitch (scope, stories, sketch, constraints, test plan all shown) and approve, revise, or abort.
+1. **Intake** — orchestrator verifies a clean working tree, creates a worktree at `.claude/worktrees/<cycle-id>`, checks out a fresh branch, copies the axiom-graph DB into the worktree (via `axiom_graph_checkout`), creates the cycle manifest at `docs/pev/cycles/<cycle-id>.json`. Cycle IDs are `pev-YYYY-MM-DD-<slug>`.
+2. **Plan (Architect)** — Architect explores the codebase via axiom-graph, optionally asks you clarifying questions, writes a Shape Up-style pitch to the manifest: problem, user stories ("As a [persona], I want…"), solution sketch, constraints, test plan. **Human gate**: review the pitch (scope, stories, sketch, constraints, test plan all shown) and approve, revise, or abort.
 3. **Build (Builder)** — Builder reads the pitch, decomposes into tasks, implements with TDD in the worktree, commits when done. Returns a manifest (files changed, tests added, deviations). On `CONTINUING`, the Builder is re-dispatched with its previous progress preserved.
-4. **Review (Reviewer)** — read-only scrutiny of the Builder's code against the pitch and source docs. Six passes: test run, source doc cross-check, spec compliance (per user story), functionality preservation (callers traced via cortex), code quality, PEV-specific checks (logging, test annotations, workflow markers). **Human gate**: presented review verdict, test coverage table. Approve merge, redispatch Builder to fix, or abort.
-5. **Merge** — orchestrator merges the worktree branch into main, rebuilds cortex, presents impact summary. **Human gate**: approve to proceed to Auditor.
+4. **Review (Reviewer)** — read-only scrutiny of the Builder's code against the pitch and source docs. Six passes: test run, source doc cross-check, spec compliance (per user story), functionality preservation (callers traced via axiom-graph), code quality, PEV-specific checks (logging, test annotations, workflow markers). **Human gate**: presented review verdict, test coverage table. Approve merge, redispatch Builder to fix, or abort.
+5. **Merge** — orchestrator merges the worktree branch into main, rebuilds axiom-graph, presents impact summary. **Human gate**: approve to proceed to Auditor.
 6. **Audit (Auditor)** — runs on main post-merge. Reviews every stale node, updates graph-linked docs (feature docs, design specs, interface specs) AND reads `.pev/doc-topology.json` to proactively update project-specific doc categories (PRDs, ADRs, etc.). Writes Impact Report.
 7. **Doc Review (Doc Reviewer)** — verifies the Auditor's doc updates + scans for drift in doc categories the Auditor may have missed. Narrow safety-net role. On FAIL, the Auditor is redispatched.
 8. **Complete** — final commit assembled, cycle manifest marked `completed`, worktree cleanup.
@@ -39,11 +39,11 @@ Flow:
 
 1. Pre-flight: dirty-repo check (conversational override — "repo has uncommitted changes, proceed / stash first / escalate to /pev-cycle?").
 2. Read `.pev/` SOPs (fallback to plugin templates).
-3. Scope check: runs `cortex_workflow_list(steps=true)` to see what the project considers core mechanisms. If the task looks likely to touch any of those, or crosses other escalation signals (4+ files, public API change, new architectural decision, 3+ new tests), bails out with `status: escalated` and recommends `/pev-cycle`.
+3. Scope check: runs `axiom_graph_workflow_list(steps=true)` to see what the project considers core mechanisms. If the task looks likely to touch any of those, or crosses other escalation signals (4+ files, public API change, new architectural decision, 3+ new tests), bails out with `status: escalated` and recommends `/pev-cycle`.
 4. Writes a mini-pitch (problem, user story, acceptance, plan). **Human gate**: approve, revise, or escalate.
 5. Implements in your working tree. Single commit when done.
 6. Structured self-review: acceptance criteria verified, test-policy tier compliance, review-criteria violations noted, doc-drift scan against `.pev/doc-topology.json`, workflow-marker check (including forward-looking: did this change introduce a new function that should become a workflow?), collateral grep.
-7. Writes a checkin doc to `docs/pev/instances/pev-instance-YYYY-MM-DD-<slug>.json`. Doc is searchable via `cortex_search` alongside full-cycle manifests.
+7. Writes a checkin doc to `docs/pev/instances/pev-instance-YYYY-MM-DD-<slug>.json`. Doc is searchable via `axiom_graph_search` alongside full-cycle manifests.
 
 Status codes match full PEV (`DONE` / `CONTINUING` / `BLOCKED` / `NEEDS_INPUT` / `ESCALATED`) so moving up to `/pev-cycle` mid-task is natural.
 
@@ -58,7 +58,7 @@ Use `/pev-instance` when:
 Use `/pev-cycle` when:
 - 3+ files, public API changes, architectural decisions, new features
 - You want the Reviewer safety net
-- Anything touching `cortex_workflow_list(steps=true)` functions ("core mechanisms")
+- Anything touching `axiom_graph_workflow_list(steps=true)` functions ("core mechanisms")
 - You're uncertain about scope — `/pev-instance` will proactively escalate if it grows, but starting full costs one extra dispatch
 
 When in doubt, start with `/pev-instance` and let it escalate.
@@ -71,7 +71,7 @@ Every gate follows the same pattern — the orchestrator presents the relevant a
 |---|---|---|
 | Post-plan | Full Architect pitch (scope, user stories, solution sketch, constraints, test plan) | Approve → Builder runs. Revise → redispatch Architect with feedback. Abort → cycle marked incomplete. |
 | Post-review | Reviewer verdict + test coverage table | Approve → merge. Request Builder fixes → loopback. Abort. |
-| Pre-merge | Change summary (files, tests, deviations, cortex check) | Approve merge → Auditor runs. Provide feedback → Builder loopback. |
+| Pre-merge | Change summary (files, tests, deviations, axiom-graph check) | Approve merge → Auditor runs. Provide feedback → Builder loopback. |
 | Post-doc-review | Doc Reviewer verdict | Approve → complete. Request Auditor fixes → loopback (max 2). Abort. |
 | `/pev-instance` | Mini-pitch | Approve → implement. Revise → re-pitch. Escalate → bail to `/pev-cycle`. |
 
@@ -100,7 +100,7 @@ Project doc taxonomy. Lists doc categories (PRD, interface spec, ADR, design spe
 - **Auditor action** — what the Auditor does proactively when triggered
 - **Doc Reviewer check** — what the Doc Reviewer verifies
 
-The Auditor reads this and iterates triggered categories, performing the action. The Doc Reviewer reads it and verifies. Without this file, the Auditor sticks to cortex-graph-linked docs only — you get less doc coverage.
+The Auditor reads this and iterates triggered categories, performing the action. The Doc Reviewer reads it and verifies. Without this file, the Auditor sticks to axiom-graph-linked docs only — you get less doc coverage.
 
 Copy from `${CLAUDE_PLUGIN_ROOT}/templates/doc-topology.json` and customize for your project's doc structure.
 
@@ -126,14 +126,14 @@ Only the structure is JSON; the content is markdown you can read directly in any
 
 ### Cortex indexing (optional)
 
-If you want `cortex_search` / `cortex_history` over your SOPs, add `.pev` to `doc_dirs` in your `cortex.toml`:
+If you want `axiom_graph_search` / `axiom_graph_history` over your SOPs, add `.pev` to `doc_dirs` in your `axiom-graph.toml`:
 
 ```toml
-[cortex.scan]
+[axiom_graph.scan]
 doc_dirs = ["docs", ".pev"]
 ```
 
-Then run `cortex build .`. Not required for skills to function — they read files directly via the Read tool.
+Then run `axiom-graph build .`. Not required for skills to function — they read files directly via the Read tool.
 
 ## Typical walk-through
 
@@ -143,7 +143,7 @@ A concrete `/pev-cycle` session, abbreviated:
 > /pev-cycle add filter-by-date to the history endpoint
 
 [Architect phase — ~2-5 minutes]
-The Architect reads your codebase via cortex, identifies the affected
+The Architect reads your codebase via axiom-graph, identifies the affected
 modules, and may ask: "Use a WHERE clause on an indexed column, or a
 Python-side filter? (previous ADR prefers DB-level)."
 
@@ -171,7 +171,7 @@ Change summary shown. You approve the merge.
 Auditor reads .pev/doc-topology.json, sees "PRD" category triggered
 (you changed user-facing behavior). Updates the capabilities table in
 docs/prd/history.md to mark "filter by date range" as Done. Also
-checks cortex staleness; confirms no unexpected cascades.
+checks axiom-graph staleness; confirms no unexpected cascades.
 
 [Doc Reviewer phase — ~1-3 minutes]
 Verifies the PRD update matches the Builder manifest. PASS.
@@ -204,12 +204,12 @@ For `/pev-instance` runs, friction lives in the checkin doc's `friction` section
 
 ```bash
 # Surface recurring friction across all cycles
-cortex_search "friction"
+axiom_graph_search "friction"
 
 # Filter by tag for a specific friction type
-cortex_search "cortex-staleness"
-cortex_search "instruction-ambiguity"
-cortex_search "role-pinch"
+axiom_graph_search "axiom-graph-staleness"
+axiom_graph_search "instruction-ambiguity"
+axiom_graph_search "role-pinch"
 ```
 
 Plan a periodic `/pev-instance` (or `/pev-cycle`) whose input is "read the last N cycles' friction logs, cluster the entries, propose skill or tool changes." Without a committed read cadence the logs decay to write-only telemetry — the patterns are only valuable if somebody reads them.

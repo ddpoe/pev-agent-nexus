@@ -18,15 +18,15 @@ Worktree path: `.claude/worktrees/{cycle-id}`
 
 Branch name: `worktree-{cycle-id}`
 
-Cortex doc ID: `{project_id}::docs.pev.cycles.{cycle-id}` — the `{project_id}` prefix MUST be read from `cortex.toml` (`project_id` field) at runtime. Do NOT hardcode it. Read `cortex.toml` in the project root and extract the `project_id` value. Example: if `project_id = "pm_mvp"`, the doc ID is `pm_mvp::docs.pev.cycles.{cycle-id}`.
+Cortex doc ID: `{project_id}::docs.pev.cycles.{cycle-id}` — the `{project_id}` prefix MUST be read from `axiom-graph.toml` (`project_id` field) at runtime. Do NOT hardcode it. Read `axiom-graph.toml` in the project root and extract the `project_id` value. Example: if `project_id = "pm_mvp"`, the doc ID is `pm_mvp::docs.pev.cycles.{cycle-id}`.
 
 ## Manifest Creation
 
-Use `cortex_write_doc` to create the cycle manifest. Read the cycle manifest template from `${CLAUDE_PLUGIN_ROOT}/templates/cycle-manifest-template.json` for the full section layout and instructions.
+Use `axiom_graph_write_doc` to create the cycle manifest. Read the cycle manifest template from `${CLAUDE_PLUGIN_ROOT}/templates/cycle-manifest-template.json` for the full section layout and instructions.
 
 Call pattern:
 ```
-cortex_write_doc(
+axiom_graph_write_doc(
   project_root="{worktree_path}",
   doc_json='{JSON with title, id, tags, sections}'
 )
@@ -53,7 +53,7 @@ All other sections start with placeholder content — Architect, Builder, and Au
 
 ## State File
 
-Write `.pev-state.json` to the **worktree root** (the cwd after `EnterWorktree`) once per cycle, before the first subagent dispatch. The doc-scope, cortex-scope, and worktree-scope hooks all find this file by reading the `cwd` field from their input and locating `.pev-state.json` at that root. The file does NOT need to be rewritten between phases — hooks dispatch per-agent behavior on the `agent_type` field in hook input, not on state.
+Write `.pev-state.json` to the **worktree root** (the cwd after `EnterWorktree`) once per cycle, before the first subagent dispatch. The doc-scope, axiom-graph-scope, and worktree-scope hooks all find this file by reading the `cwd` field from their input and locating `.pev-state.json` at that root. The file does NOT need to be rewritten between phases — hooks dispatch per-agent behavior on the `agent_type` field in hook input, not on state.
 
 For the **Auditor phase only** (runs on main after worktree is removed), write `.pev-state.json` to the **main repo root**. This is a serial mutex — check for an existing `.pev-state.json` on main before writing (see Auditor Mutex section).
 
@@ -66,8 +66,8 @@ Format:
 }
 ```
 
-- `cycle_doc_id`: the full cortex doc ID for the cycle manifest: `{project_id}::docs.pev.cycles.{cycle-id}`. The `{project_id}` MUST be read from `cortex.toml` at runtime — it varies per project. All dispatch prompts and hooks use this value.
-- `worktree_path`: absolute path to the worktree created in Phase 1. Builder and Reviewer receive this — hooks use it to scope Write/Edit, Bash, and cortex `project_root` calls. Not used for Auditor (runs on main).
+- `cycle_doc_id`: the full axiom-graph doc ID for the cycle manifest: `{project_id}::docs.pev.cycles.{cycle-id}`. The `{project_id}` MUST be read from `axiom-graph.toml` at runtime — it varies per project. All dispatch prompts and hooks use this value.
+- `worktree_path`: absolute path to the worktree created in Phase 1. Builder and Reviewer receive this — hooks use it to scope Write/Edit, Bash, and axiom-graph `project_root` calls. Not used for Auditor (runs on main).
 - Tool-budget counters are keyed on the subagent's `agent_id` (read by hooks from stdin JSON) at `/tmp/pev-counter-<agent_id>.txt`. Files are auto-created on first increment and auto-deleted by the `SubagentStop` hook. No counter_file field needed in state.
 - Use the Write tool to create this file.
 
@@ -126,14 +126,14 @@ Creates a new venv for the worktree and installs all deps from the lock file, pl
 
 **Install frontend deps (if package.json exists):**
 ```bash
-if [ -f cortex/viz/static/ts/package.json ]; then
-  cd cortex/viz/static/ts && npm install
+if [ -f axiom_graph/viz/static/ts/package.json ]; then
+  cd axiom_graph/viz/static/ts && npm install
 fi
 ```
 
-**Copy cortex DB into worktree:**
+**Copy axiom-graph DB into worktree:**
 ```
-cortex_checkout(
+axiom_graph_checkout(
   project_root="{main_repo_path}",
   worktree_path="{worktree_path}"
 )
@@ -191,7 +191,7 @@ Project root: {worktree_path}
 Your working directory is: {worktree_path}
 Your cwd is already set to this directory. Use git commands directly (no -C flag needed).
 For pytest: poetry run pytest (cwd is already the worktree, so imports are correct).
-The worktree has a cortex DB snapshot — use {worktree_path} as project_root for all cortex tool calls.
+The worktree has a axiom-graph DB snapshot — use {worktree_path} as project_root for all axiom-graph tool calls.
 
 == ARCHITECT PITCH ==
 
@@ -200,8 +200,8 @@ The worktree has a cortex DB snapshot — use {worktree_path} as project_root fo
 == INSTRUCTIONS ==
 
 - Follow the task list in the pitch. Work one task at a time.
-- Use cortex_source/cortex_graph/cortex_search(scope="code") to read code.
-- cortex_source output includes file path and line range — use those for Edit calls.
+- Use axiom_graph_source/axiom_graph_graph/axiom_graph_search(scope="code") to read code.
+- axiom_graph_source output includes file path and line range — use those for Edit calls.
 - All code changes go in the worktree at the project root above.
 - You have doc-write access to the cycle manifest (scoped by doc-scope hook). Write your build plan to builder.build-plan, update progress in builder.progress, and record decisions in the decisions section.
 - Follow your skill instructions. Return your implementation manifest when done.
@@ -245,7 +245,7 @@ Then read the Builder's context: builder.build-plan, builder.progress, and the d
 Files changed by the Builder:
 {git diff --stat output from worktree branch vs baseline}
 
-Use cortex tools (cortex_diff, cortex_source, cortex_graph) to review the actual code changes on demand.
+Use axiom-graph tools (axiom_graph_diff, axiom_graph_source, axiom_graph_graph) to review the actual code changes on demand.
 
 Run the test suite first (Pass 0). Cross-check source documents (Pass 1). Then reverse-map every code change to a user story or deviation (Pass 2). Include test_coverage, reverse_mapping, and deviation_tribunal in your verdict.
 
@@ -262,17 +262,17 @@ You are the PEV Auditor for cycle {cycle_id}.
 Cycle manifest doc ID: {cycle_doc_id}
 Project root: {main_repo_path}
 
-The merge has already happened — you are running on the live codebase (main), not a worktree. Use {main_repo_path} as project_root for all cortex tool calls.
+The merge has already happened — you are running on the live codebase (main), not a worktree. Use {main_repo_path} as project_root for all axiom-graph tool calls.
 
-Read the cycle manifest, then run cortex_build + cortex_check to determine the review scope. Follow the Auditor Reference Protocol for the full checklist.
+Read the cycle manifest, then run axiom_graph_build + axiom_graph_check to determine the review scope. Follow the Auditor Reference Protocol for the full checklist.
 
-Write your doc change ledger to auditor.change-ledger as you work — each entry should include reason, trigger_node, category, and diff_command so changes are traceable in cortex viz.
+Write your doc change ledger to auditor.change-ledger as you work — each entry should include reason, trigger_node, category, and diff_command so changes are traceable in axiom-graph viz.
 
 Return your Impact Report when done.
 ```
 
 **Auditor (continuation):**
-Add: `CONTINUATION: A previous Auditor incarnation was dispatched and returned CONTINUING. Already-marked-clean nodes will not appear stale on cortex_check. Previous Auditor checkpoint: {checkpoint}`
+Add: `CONTINUATION: A previous Auditor incarnation was dispatched and returned CONTINUING. Already-marked-clean nodes will not appear stale on axiom_graph_check. Previous Auditor checkpoint: {checkpoint}`
 
 **Doc Reviewer (initial):**
 ```
@@ -285,7 +285,7 @@ The Auditor has completed its documentation updates on the live codebase (main).
 
 Read the cycle manifest for context: Architect pitch (what was requested), Builder manifest (what was built), Auditor change ledger (what docs were changed), and Auditor impact report (audit summary).
 
-Use cortex tools to verify doc content matches the code. Follow your skill instructions. Return your review verdict when done.
+Use axiom-graph tools to verify doc content matches the code. Follow your skill instructions. Return your review verdict when done.
 ```
 
 **Doc Reviewer (re-review after Auditor fix):**
@@ -322,7 +322,7 @@ When the Architect's NEEDS_INPUT payload includes `doc_edits`, process them befo
    Present via AskUserQuestion: "Approve this source doc edit?" with options: Approve / Reject / Reject with note.
 3. Apply approved edits:
    ```
-   cortex_update_section(
+   axiom_graph_update_section(
      section_id="{section_id}",
      content="{proposed_content}"
    )
@@ -336,7 +336,7 @@ When the Architect's NEEDS_INPUT payload includes `doc_edits`, process them befo
 
 ## Builder Context Handoff
 
-Before dispatching the Builder, the Orchestrator reads the Architect's pitch from the cycle manifest and inlines the text into the dispatch prompt. This gives the Builder the problem, user stories, solution sketch, constraints, and — critically — the **task list** with specific cortex node IDs per task.
+Before dispatching the Builder, the Orchestrator reads the Architect's pitch from the cycle manifest and inlines the text into the dispatch prompt. This gives the Builder the problem, user stories, solution sketch, constraints, and — critically — the **task list** with specific axiom-graph node IDs per task.
 
 **Step 1: Read the pitch sections from the cycle manifest.**
 
@@ -351,13 +351,13 @@ Read these sections and concatenate them into a single text block:
 - `architect.test-plan`
 - `architect.changelog-draft`
 
-Use `cortex_read_doc` with `section=` for each.
+Use `axiom_graph_read_doc` with `section=` for each.
 
 **Step 2: Assemble the prompt.**
 
 Use the Builder (initial) dispatch template from the Dispatch Prompts section, substituting the pitch text into the `ARCHITECT PITCH` placeholder.
 
-Source code is not inlined. The Builder reads source on demand using cortex tools (`cortex_source`, `cortex_graph`, `cortex_search`) against the cortex DB snapshot (copied via `cortex_checkout` during worktree setup). The Architect's task list gives the Builder specific node IDs to look up per task, so it can start implementing immediately with targeted reads.
+Source code is not inlined. The Builder reads source on demand using axiom-graph tools (`axiom_graph_source`, `axiom_graph_graph`, `axiom_graph_search`) against the axiom-graph DB snapshot (copied via `axiom_graph_checkout` during worktree setup). The Architect's task list gives the Builder specific node IDs to look up per task, so it can start implementing immediately with targeted reads.
 
 **When NOT to inline the pitch:**
 
@@ -366,11 +366,11 @@ Source code is not inlined. The Builder reads source on demand using cortex tool
 
 ## Status Updates
 
-Use `cortex_update_section` to update the status section at each phase transition.
+Use `axiom_graph_update_section` to update the status section at each phase transition.
 
 **Planning → Builder:**
 ```
-cortex_update_section(
+axiom_graph_update_section(
   section_id="{cycle_doc_id}::status",
   content="Phase: builder\nBaseline SHA: {baseline_sha}\nStarted: {original-timestamp}\nCycle ID: {cycle-id}\n\nPhase transitions:\n- planning: {original-timestamp} — cycle created\n- builder: {now-timestamp} — plan approved"
 )
@@ -399,7 +399,7 @@ Set `Phase: incomplete` with reason. Keep the `pev-active` tag so the cycle can 
 
 **Reviewer returns:** Look for `---REVIEW---` separator. Everything after it is JSON review findings. Write to the `review` section:
 ```
-cortex_update_section(
+axiom_graph_update_section(
   section_id="{cycle_doc_id}::review",
   content="{formatted review findings}"
 )
@@ -409,7 +409,7 @@ cortex_update_section(
 
 **Doc Reviewer returns:** Look for `---DOC-REVIEW---` separator. Everything after it is JSON review findings. Write to the `doc-review` section:
 ```
-cortex_update_section(
+axiom_graph_update_section(
   section_id="{cycle_doc_id}::doc-review",
   content="{formatted doc review findings}"
 )
@@ -421,7 +421,7 @@ cortex_update_section(
 
 **Writing to manifest:**
 ```
-cortex_update_section(
+axiom_graph_update_section(
   section_id="{cycle_doc_id}::builder.manifest",
   content="{formatted manifest}"
 )
@@ -429,7 +429,7 @@ cortex_update_section(
 
 **Checkpoint sub-sections (for CONTINUING):**
 ```
-cortex_add_section(
+axiom_graph_add_section(
   doc_id="{cycle_doc_id}",
   parent_section_id="builder",
   section_id="checkpoint-{incarnation}",
@@ -483,10 +483,10 @@ ExitWorktree(action="keep")
 git merge --no-commit --no-ff worktree-{cycle-id}
 ```
 
-4. **Rebuild cortex on main:**
+4. **Rebuild axiom-graph on main:**
 ```
-cortex_build(project_root="{main_repo_path}")
-cortex_check(project_root="{main_repo_path}")
+axiom_graph_build(project_root="{main_repo_path}")
+axiom_graph_check(project_root="{main_repo_path}")
 ```
 
 5. **Commit** with structured message (see Commit Format section). This finalizes the merge. Capture commit SHA.
@@ -505,12 +505,12 @@ Phase 8 (Complete) — after Auditor finishes.
 
 1. **Create audit checkpoint:**
 ```bash
-poetry run cortex history checkpoint . --message "pev-cycle-{cycle-id}-audit-complete"
+poetry run axiom-graph history checkpoint . --message "pev-cycle-{cycle-id}-audit-complete"
 ```
 
 2. **Update status to completed** (see Status Updates section).
 
-3. **Remove pev-active tag:** Read the full doc with `cortex_read_doc`, then `cortex_write_doc` to rewrite with `pev-active` removed from the tags list. Keep `pev-cycle` tag.
+3. **Remove pev-active tag:** Read the full doc with `axiom_graph_read_doc`, then `axiom_graph_write_doc` to rewrite with `pev-active` removed from the tags list. Keep `pev-cycle` tag.
 
 4. **Run efficiency analysis:** Find the current session's JSONL file and generate the efficiency report.
 ```bash
@@ -529,13 +529,13 @@ rm -f .pev-state.json
 
 **Agent dispatch fails:** Check that the pev plugin is installed and enabled (`claude plugin list`). Agent definitions ship in the plugin at `${CLAUDE_PLUGIN_ROOT}/agents/pev-{agent}.md`. If the plugin looks fine but dispatch still fails, see `plugins/hook-spike/TROUBLESHOOTING.md` §7 for known failure modes.
 
-**cortex_write_doc fails:** Check that `docs/pev/cycles/` directory exists.
+**axiom_graph_write_doc fails:** Check that `docs/pev/cycles/` directory exists.
 
 **Worktree creation fails:** Check for stale worktrees with `git worktree list` and remove them.
 
 **Merge conflicts:** Present conflicts to the user and resolve before proceeding.
 
-**cortex_check hangs:** Known issue — set a timeout and retry. If it hangs again, proceed with manual review scope based on the Builder's change-set.
+**axiom_graph_check hangs:** Known issue — set a timeout and retry. If it hangs again, proceed with manual review scope based on the Builder's change-set.
 
 **Failure at any point:** Update the cycle manifest status to `incomplete`. The `pev-active` tag stays — the cycle can be resumed on the next `/pev-cycle` invocation.
 

@@ -11,15 +11,15 @@ tools:
   - Bash
   - Grep
   - Glob
-  # Read-only cortex tools (these get blocked by gate)
-  - mcp__cortex__cortex_search
-  - mcp__cortex__cortex_source
-  - mcp__cortex__cortex_read_doc
-  - mcp__cortex__cortex_render
-  - mcp__cortex__cortex_graph
-  # Doc-write cortex tools (scoped by doc-scope hook, allowlisted past gate)
-  - mcp__cortex__cortex_update_section
-  - mcp__cortex__cortex_add_section
+  # Read-only axiom-graph tools (these get blocked by gate)
+  - mcp__axiom_graph__axiom_graph_search
+  - mcp__axiom_graph__axiom_graph_source
+  - mcp__axiom_graph__axiom_graph_read_doc
+  - mcp__axiom_graph__axiom_graph_render
+  - mcp__axiom_graph__axiom_graph_graph
+  # Doc-write axiom-graph tools (scoped by doc-scope hook, allowlisted past gate)
+  - mcp__axiom_graph__axiom_graph_update_section
+  - mcp__axiom_graph__axiom_graph_add_section
 skills:
   - pev-spike
 ---
